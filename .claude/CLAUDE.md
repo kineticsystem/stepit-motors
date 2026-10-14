@@ -102,6 +102,16 @@ Tests use **GMock** (`ament_add_gmock`). Mocks live alongside tests:
 - `src/stepit_hardware/tests/mock/mock_driver.hpp` / `mock_driver_factory.hpp` — mock the driver for `test_stepit_hardware`
 - `src/stepit_hardware/tests/fake/fake_hardware_info.hpp` — constructs `HardwareInfo` for unit tests without a URDF
 
+## Architecture and Review Documents
+
+For the `architect` and `reviewer` skills: what they cannot find out alone.
+
+- There is no `docs/ARCHITECTURE.md` yet. The first one follows one idea: **`StepitHardware` talks to the motors only through the `Driver` interface**, so the real controller and the fake motors are interchangeable. If a change breaks it, say so in the document and to the user.
+- Its shape is the newest `docs/ARCHITECTURE.md` of the other StepIt modules, e.g. StepIt Camera's: Introduction, The Big Picture (with a table of the hardware interface, `/motors/status` and the launch arguments), The Packages, the parts (the hardware interface, the drivers, the protocol over the serial port, the firmware in `stepit_mcu`), Tests, How to Extend the Driver, Design Decisions and Trade-offs. The diagrams of `docs/*.uxf` are older drawings: check them against the code before using them. Link it from the README and from [Architecture](#architecture).
+- **The review is the last section, Review, of `docs/ARCHITECTURE.md`**, opened with the date and the commit reviewed, as in every StepIt module; not a separate `docs/Review.md`. Say whether an implementation issue is a safety issue for the motors, e.g. a move that does not stop.
+- Easy to break, and the first things to check: `read()` and `write()` run in the realtime loop and never publish or block; `/motors/status` keeps its name; the launch arguments, not the xacro, configure a robot. `serial` and `framed-serial` in `modules/` are shared code: `framed-serial` is also in StepIt Freezer, at a commit that must match; do not review `serial`, which is third-party.
+- **Probes**: a throwaway test is a gmock test in `src/stepit_driver/tests/` or `src/stepit_hardware/tests/`, with the mocks and fakes there, added with `ament_add_gmock()` to the `tests/CMakeLists.txt` of the package, and run with `colcon test --packages-select <package> --return-code-on-test-failure`. Never `stepit_hardware_tests`, which needs the real controller.
+
 ## Code Standards
 
 - C++20, compiled with `-Werror -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion -Wold-style-cast`
