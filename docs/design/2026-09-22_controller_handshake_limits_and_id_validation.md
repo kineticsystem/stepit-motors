@@ -1,8 +1,7 @@
 # Controller handshake: identity, motor-id validation, motion limits and firmware version
 
 **Date:** 2026-09-22
-**Branch:** `main` (uncommitted working tree)
-**Status:** ready for review, nothing committed
+**Status:** merged in `cbbd24c`. Since then `framed_serial` has replaced the COBS framing (`cobs_serial`) named here.
 
 ---
 

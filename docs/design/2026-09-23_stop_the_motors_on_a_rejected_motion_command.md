@@ -1,8 +1,7 @@
 # Stop the motors on a rejected motion command
 
 **Date:** 2026-09-23
-**Branch:** `pr-error-stop`, based on `09f5046`
-**Status:** ready for review, nothing committed
+**Status:** merged in `d50a701`.
 **Follows:** `2026-09-22_controller_handshake_limits_and_id_validation.md`, §10 and §8.1
 
 ---

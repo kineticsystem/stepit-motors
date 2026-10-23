@@ -4,12 +4,14 @@
 [![Format](https://github.com/kineticsystem/stepit-motors/actions/workflows/ci-format.yml/badge.svg)](https://github.com/kineticsystem/stepit-motors/actions/workflows/ci-format.yml)
 [![Linters](https://github.com/kineticsystem/stepit-motors/actions/workflows/ci-ros-lint.yml/badge.svg)](https://github.com/kineticsystem/stepit-motors/actions/workflows/ci-ros-lint.yml)
 
-<img src="docs/logo.png" width="50%">
+<img src="docs/images/logo.png" width="50%">
 
 ## Table of Contents <!-- omit in toc -->
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
+  - [Protecting the Drivers](#protecting-the-drivers)
+  - [Cooling the Drivers](#cooling-the-drivers)
 - [Install StepIt Motors on the Microcontroller](#install-stepit-motors-on-the-microcontroller)
 - [Install StepIt Motors on the Local Computer](#install-stepit-motors-on-the-local-computer)
   - [Chekout the Git Repository](#chekout-the-git-repository)
@@ -21,6 +23,8 @@
 ## Introduction
 
 StepIt Motors is a project to control stepper motors with a Teensy microcontroller and ROS2. Watch [this video](https://github.com/user-attachments/assets/e67d46ce-e133-4e34-bab8-7d924be3dee4)
+
+The other documents, on the hardware and the design of the changes, are listed in [docs/README.md](docs/README.md).
 
 ## Prerequisites
 
@@ -35,8 +39,53 @@ For a real application, we recommend attaching the stepper motors to a Teensy mi
 - 1 x [Teensy 4.1](https://www.pjrc.com/store/teensy41.html) or Teensy 4.0.
 - 1 x [PiBot multi-stepper motor driver board rev2.3 ](https://www.pibot.com/pibot-multi-stepper-motor-driver-board-rev2-3.html)
 - 5 x [TMC2208](https://shop.watterott.com/SilentStepStick-TMC2208-Stepper-Motor-Driver-with-soldered-pinheaders)
+- 5 x [SilentStepStick Protector](https://shop.watterott.com/SilentStepStick-Protector-for-Stepper-Motor-Drivers), one under each TMC2208: see [Protecting the Drivers](#protecting-the-drivers).
+- 5 x heatsinks for the TMC2208, small blue aluminium ones with thermal adhesive tape: see [Cooling the Drivers](#cooling-the-drivers).
 
-The Teensy is connected to a computer using a USB cable. For a portable application, we can use a [Raspberry PI 4](docs/install_ros_on_rasperry_pi/install_ros2_on_rasperry_pi.md).
+The Teensy is connected to a computer using a USB cable. For a portable application, we can use a Raspberry Pi.
+
+### Protecting the Drivers
+
+Each TMC2208 sits on a [Watterott SilentStepStick Protector](https://learn.watterott.com/silentstepstick/protector/), a small board plugged into the driver's socket on the PiBot board, with the driver plugged into it. It adds flyback diodes on the four motor outputs, and its version 2 one more diode, from the logic supply `VIO` to the motor supply `VM`.
+
+<table>
+  <tr>
+    <td><img src="docs/hardware/TMC2208.jpg" width="150" alt="The SilentStepStick TMC2208 driver"></td>
+    <td><img src="docs/hardware/Protector.jpg" width="150" alt="The SilentStepStick Protector"></td>
+  </tr>
+  <tr>
+    <td>SilentStepStick TMC2208</td>
+    <td>SilentStepStick Protector</td>
+  </tr>
+</table>
+
+Photos: [Watterott](https://github.com/watterott/SilentStepStick), [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+
+A stepper motor is also a generator, and the diodes give the current it makes a safe way back, instead of through the driver:
+
+- **A motor turned by hand.** Moving an axis by hand while the drivers are off makes a voltage that goes back into the driver's outputs and can lift `VM` or partly power the driver. The Trinamic drivers are sensitive to it, and an axis is often moved by hand to set it up.
+- **A coil opened under current.** A motor unplugged while its coil carries current makes a voltage spike that can destroy the driver at once. The diodes take most of the spike.
+
+The MOSFETs of the TMC2208 have diodes of their own, so the protector is a margin, not a necessity. It costs about as much as a driver, much less than finding which axis died and why.
+
+What it costs:
+
+- **One more row of contacts** between the board and the driver. A loose one gives an axis that skips steps or stops now and then: push both boards fully into their sockets.
+- **The driver sits higher.** Check that its heatsink still has air around it.
+- **Two rules of Watterott's**, because of the diode from `VIO` to `VM`: never enable the drivers while `VM` is off, and never power anything else from `VM`, e.g. a fan, or its current comes from `VIO`.
+
+> [!IMPORTANT]
+> The protector does not make plugging a motor under power safe: never plug or unplug a motor while the drivers are powered.
+
+### Cooling the Drivers
+
+Each TMC2208 carries a small aluminium heatsink, stuck on with its thermal adhesive tape. Its chip sits on the underside of the SilentStepStick and sends its heat through the board, so the heatsink goes on the **top side of the board**, the side that faces up once the driver is plugged in, not on the chip. See [the SilentStepStick FAQ](https://learn.watterott.com/silentstepstick/faq/).
+
+- **Up to 850 mA RMS** per motor, a small heatsink is enough, according to Watterott.
+- **Above 850 mA RMS**, use a heatsink that covers nearly the whole top of the board, and a fan.
+- **Leave air around the drivers** in any case: the heatsink only spreads the heat, the air carries it away.
+
+The current of each motor is set by the potentiometer of its TMC2208: set it no higher than the motor needs, which also keeps the driver cool.
 
 ## Install StepIt Motors on the Microcontroller
 
