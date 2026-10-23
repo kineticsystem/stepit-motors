@@ -53,7 +53,7 @@ xacro to configure a robot: StepIt Macro sets them as launch arguments.
 
 ## Architecture
 
-The project is a ROS 2 workspace with two top-level directories:
+How it is built, and why, is in [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md). The project is a ROS 2 workspace with two top-level directories:
 
 - **`src/`** — ROS 2 packages (ament/colcon)
 - **`modules/`** — git submodules (non-ROS C++ libraries)
@@ -106,8 +106,8 @@ Tests use **GMock** (`ament_add_gmock`). Mocks live alongside tests:
 
 For the `architect` and `reviewer` skills: what they cannot find out alone.
 
-- There is no `docs/ARCHITECTURE.md` yet. The first one follows one idea: **`StepitHardware` talks to the motors only through the `Driver` interface**, so the real controller and the fake motors are interchangeable. If a change breaks it, say so in the document and to the user.
-- Its shape is the newest `docs/ARCHITECTURE.md` of the other StepIt modules, e.g. StepIt Camera's: Introduction, The Big Picture (with a table of the hardware interface, `/motors/status` and the launch arguments), The Packages, the parts (the hardware interface, the drivers, the protocol over the serial port, the firmware in `stepit_mcu`), Tests, How to Extend the Driver, Design Decisions and Trade-offs. Link it from the README and from [Architecture](#architecture).
+- [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) follows one idea: **`StepitHardware` talks to the motors only through the `Driver` interface**, so the real controller and the fake motors are interchangeable. If a change breaks it, say so in the document and to the user.
+- Its shape is the newest `docs/ARCHITECTURE.md` of the other StepIt modules, StepIt Freezer's when it was written: Introduction, The Big Picture (with a table of the hardware interface, `/motors/status` and the launch arguments), The Packages, the parts (the hardware interface, the drivers, the protocol over the serial port, the firmware in `stepit_mcu`), Tests, How to Extend the Driver, Design Decisions and Trade-offs. It is linked from the README and from [Architecture](#architecture).
 - **The review is a separate document, `docs/Review.md`**, opened with the date and the commit reviewed; `docs/ARCHITECTURE.md` describes the design and holds no review. Say whether an implementation issue is a safety issue for the motors, e.g. a move that does not stop.
 - Easy to break, and the first things to check: `read()` and `write()` run in the realtime loop and never publish or block; `/motors/status` keeps its name; the launch arguments, not the xacro, configure a robot. `serial` and `framed-serial` in `modules/` are shared code: `framed-serial` is also in StepIt Freezer, at a commit that must match; do not review `serial`, which is third-party.
 - **Probes**: a throwaway test is a gmock test in `src/stepit_driver/tests/` or `src/stepit_hardware/tests/`, with the mocks and fakes there, added with `ament_add_gmock()` to the `tests/CMakeLists.txt` of the package, and run with `colcon test --packages-select <package> --return-code-on-test-failure`. Never `stepit_hardware_tests`, which needs the real controller.
