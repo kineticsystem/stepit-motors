@@ -24,7 +24,7 @@
 
 StepIt Motors is a project to control stepper motors with a Teensy microcontroller and ROS2. Watch [this video](https://github.com/user-attachments/assets/e67d46ce-e133-4e34-bab8-7d924be3dee4)
 
-The other documents, on the hardware and the design of the changes, are listed in [docs/README.md](docs/README.md).
+How StepIt Motors is built, and why, is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The other documents, on the hardware and the design of the changes, are listed in [docs/README.md](docs/README.md).
 
 ## Prerequisites
 

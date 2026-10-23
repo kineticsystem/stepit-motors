@@ -1,6 +1,6 @@
 # The Documents of StepIt Motors
 
-How to build, run and test StepIt Motors is in the [README](../README.md). This folder holds everything else, one folder per topic.
+How to build, run and test StepIt Motors is in the [README](../README.md); how it is built, and why, in [ARCHITECTURE.md](ARCHITECTURE.md). This folder holds everything else, one folder per topic.
 
 | Folder | What it holds |
 |---|---|
