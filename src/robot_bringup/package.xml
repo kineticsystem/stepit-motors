@@ -7,7 +7,7 @@
     TODO: Package description
   </description>
   <maintainer email="g.remigi@kineticsystem.org">Giovanni Remigi</maintainer>
-  <license>LGPL</license>
+  <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 

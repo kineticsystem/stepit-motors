@@ -7,7 +7,7 @@
     Tests to be executed against the real hardware.
   </description>
   <maintainer email="g.remigi@kineticsystem.org">Giovanni Remigi</maintainer>
-  <license>BSD-3-Clause</license>
+  <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
