@@ -260,7 +260,7 @@ Deliberately left for a decision rather than fixed silently.
 ./bin/test.sh
 
 # Flash the firmware (needs PlatformIO and the Teensy udev rules)
-cd src/stepit_mcu && pio run -t upload
+cd src/stepit_mcu && pio run -e teensy41 -t upload
 
 # Against a connected board
 ./build/stepit_hardware_tests/get_info   --port /dev/ttyACM0   # identity, version, limits

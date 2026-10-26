@@ -4,8 +4,9 @@ How to build, run and test StepIt Motors is in the [README](../README.md); how i
 
 | Folder | What it holds |
 |---|---|
-| [`hardware`](hardware/README.md) | The datasheets and pictures of the Teensy, the PiBot board, the TMC2208 drivers and their protectors. |
+| [`hardware`](hardware/README.md) | The datasheets and pictures of the Teensy 4.0 and 4.1, the PiBot board, the TMC2208 drivers and their protectors. |
 | [`design`](design) | Design notes of the changes, one per change, named after its date. |
+| [`pr`](pr/README.md) | The notes of the pull requests: what we discussed, what we chose, and why. |
 | [`background`](background) | Reading on stepper motors. |
 | [`images`](images) | The logo. |
 
