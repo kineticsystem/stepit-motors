@@ -24,3 +24,5 @@ jobs:
           SKIP: ament_copyright,ament_lint_cmake,ament_cpplint
         with:
           extra_args: --all-files --hook-stage manual
+      - name: Check that every diagram is rendered from its source
+        run: bin/check-diagrams.sh

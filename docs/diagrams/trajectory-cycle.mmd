@@ -1,0 +1,67 @@
+---
+config:
+  theme: base
+  fontFamily: "Arial, Helvetica, sans-serif"
+  sequence:
+    actorMargin: 24
+    width: 130
+    diagramMarginX: 10
+    boxMargin: 12
+    boxTextMargin: 8
+    messageMargin: 40
+    noteMargin: 22
+    labelBoxWidth: 56
+    labelBoxHeight: 28
+    messageFontSize: 16
+    actorFontSize: 16
+    noteFontSize: 15
+    wrap: false
+  themeVariables:
+    textColor: "#8b5cf6"
+    actorBkg: "#ede9fe"
+    actorBorder: "#7c3aed"
+    actorTextColor: "#4c1d95"
+    actorLineColor: "#a78bfa"
+    signalColor: "#8b949e"
+    signalTextColor: "#6e7781"
+    labelBoxBkgColor: "#ccfbf1"
+    labelBoxBorderColor: "#0d9488"
+    labelTextColor: "#134e4a"
+    loopTextColor: "#0d9488"
+    noteBkgColor: "#fef3c7"
+    noteBorderColor: "#d97706"
+    noteTextColor: "#78350f"
+    activationBkgColor: "#c4b5fd"
+    activationBorderColor: "#7c3aed"
+    mainBkg: "#ede9fe"
+    nodeBorder: "#7c3aed"
+    secondaryColor: "#ede9fe"
+    secondaryBorderColor: "#7c3aed"
+    secondaryTextColor: "#4c1d95"
+    tertiaryColor: "#ede9fe"
+    tertiaryBorderColor: "#7c3aed"
+    tertiaryTextColor: "#4c1d95"
+  themeCSS: >
+    svg, .label, .nodeLabel, .edgeLabel, foreignObject div { font-family: Arial, Helvetica, sans-serif; }
+    .actor { filter: drop-shadow(0 3px 6px rgba(15, 23, 42, 0.18)); }
+    rect.actor { rx: 12px; ry: 12px; }
+---
+sequenceDiagram
+    participant JTC as Trajectory<br/>controller
+    participant HW as StepitHardware
+    participant Drv as DefaultDriver
+    participant MCU as Teensy firmware
+    loop every cycle, 30 Hz
+        HW->>Drv: read(): get_status()
+        Drv->>MCU: Status 0x75
+        MCU-->>Drv: 0x11, 5 x id, position,<br/>velocity, distance
+        Drv-->>HW: motor states
+        Note over HW: copy each state to<br/>the joint of its id
+        HW-->>JTC: state interfaces
+        JTC->>HW: command.position<br/>of each joint
+        HW->>Drv: write(): set_position()
+        Drv->>MCU: Move 0x71, id and<br/>position per joint
+        Note over MCU: set the goals under<br/>writingMotorGoals
+        MCU-->>Drv: 0x11
+    end
+    Note over MCU: the interrupt steps each motor<br/>to its goal at its acceleration
