@@ -1,0 +1,82 @@
+---
+config:
+  theme: base
+  fontFamily: "Arial, Helvetica, sans-serif"
+  flowchart:
+    curve: basis
+    padding: 12
+    nodeSpacing: 46
+    rankSpacing: 32
+    subGraphTitleMargin:
+      top: 4
+      bottom: 10
+  class:
+    padding: 10
+  themeVariables:
+    lineColor: "#94a3b8"
+    textColor: "#64748b"
+    primaryColor: "#f1f5f9"
+    primaryBorderColor: "#64748b"
+    primaryTextColor: "#0f172a"
+    secondaryColor: "#f1f5f9"
+    secondaryBorderColor: "#64748b"
+    secondaryTextColor: "#0f172a"
+    tertiaryColor: "#f1f5f9"
+    tertiaryBorderColor: "#64748b"
+    tertiaryTextColor: "#0f172a"
+    mainBkg: "#f1f5f9"
+    nodeBorder: "#64748b"
+    nodeTextColor: "#0f172a"
+    classText: "#0f172a"
+    clusterBkg: "transparent"
+    clusterBorder: "#94a3b8"
+    titleColor: "#64748b"
+    edgeLabelBackground: "#ffffff"
+  themeCSS: >
+    svg, .label, .nodeLabel, .edgeLabel, foreignObject div { font-family: Arial, Helvetica, sans-serif; }
+    .node rect, .node polygon, .node path {
+      filter: drop-shadow(0 3px 6px rgba(15, 23, 42, 0.18));
+    }
+    .node rect { rx: 14px; ry: 14px; }
+    .cluster rect { rx: 18px; ry: 18px; }
+    .edgeLabel, .edgeLabel p, .edgeLabel span {
+      background: #ffffff; color: #475569; border-radius: 999px;
+    }
+    .edgeLabel p { padding: 3px 10px; }
+    .labelBkg { background: transparent !important; fill: none !important; }
+---
+flowchart TB
+    Tests("<b>stepit_hardware_tests</b>")
+    Hardware{{"<b>stepit_hardware</b>"}}
+    Description[("<b>robot_description</b>")]
+    Driver("<b>stepit_driver</b>")
+    Msgs("<b>stepit_motors_msgs</b>")
+    HI("<b>hardware_interface</b>")
+    Framed("<b>framed_serial</b>")
+    Serial("<b>serial</b>")
+
+    Hardware --> Driver
+    Hardware --> Msgs
+    Hardware --> HI
+    Driver --> Framed
+    Driver --> HI
+    Framed --> Serial
+    Description -- "package.xml" --> Driver
+    Tests --> Driver
+
+    classDef human fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337
+    classDef voice fill:#ccfbf1,stroke:#0d9488,stroke-width:2px,color:#134e4a
+    classDef mind  fill:#ede9fe,stroke:#7c3aed,stroke-width:2px,color:#4c1d95
+    classDef brain fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#ffffff
+    classDef robot fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f
+    classDef data  fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#1e3a8a
+    classDef ext   fill:#f1f5f9,stroke:#64748b,stroke-width:2px,color:#0f172a
+
+    class Tests ext
+    class Hardware brain
+    class Description data
+    class Driver,Msgs mind
+    class HI,Framed,Serial voice
+
+    linkStyle 0,1,2,3,4,5,7 stroke:#8b5cf6,stroke-width:2px
+    linkStyle 6 stroke:#3b82f6,stroke-width:2px

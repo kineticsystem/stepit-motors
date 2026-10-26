@@ -37,79 +37,8 @@ It follows one idea: **`StepitHardware` talks to the motors only through the `Dr
 
 The robot is up to five stepper motors, each driven by a TMC2208 on a PiBot board, whose step, direction and enable pins a Teensy 4.x drives. The Teensy runs [AccelStepper](https://www.airspayce.com/mikem/arduino/AccelStepper/) on a timer interrupt and answers the host over USB. On the host, `ros2_control_node` loads `StepitHardware` as a plugin, and the controllers write the joints' commands into it.
 
-```mermaid
----
-config:
-  theme: base
-  themeCSS: ".edgeLabel p { padding: 4px 10px; }"
-  flowchart:
-    padding: 20
-    nodeSpacing: 40
-    rankSpacing: 50
-  class:
-    padding: 16
-  sequence:
-    boxMargin: 12
-    boxTextMargin: 8
-    noteMargin: 28
-    messageMargin: 40
-    actorMargin: 60
-    labelBoxWidth: 56
-    labelBoxHeight: 28
-  themeVariables:
-    primaryColor: "#3b6fb6"
-    primaryTextColor: "#ffffff"
-    primaryBorderColor: "#2c5590"
-    lineColor: "#8b949e"
-    textColor: "#4d86d6"
-    actorBkg: "#3b6fb6"
-    actorBorder: "#2c5590"
-    actorTextColor: "#ffffff"
-    actorLineColor: "#8b949e"
-    signalColor: "#8b949e"
-    signalTextColor: "#4d86d6"
-    noteBkgColor: "#3b6fb6"
-    noteTextColor: "#ffffff"
-    noteBorderColor: "#2c5590"
-    secondaryColor: "#3b6fb6"
-    tertiaryColor: "#3b6fb6"
-    clusterBkg: "transparent"
-    clusterBorder: "#8b949e"
-    titleColor: "#4d86d6"
-    edgeLabelBackground: "#3b6fb6"
-    classText: "#ffffff"
-    labelBoxBkgColor: "#3b6fb6"
-    labelBoxBorderColor: "#2c5590"
-    labelTextColor: "#ffffff"
-    loopTextColor: "#4d86d6"
-    mainBkg: "#3b6fb6"
-    nodeBorder: "#2c5590"
-    nodeTextColor: "#ffffff"
-    secondaryBorderColor: "#2c5590"
-    secondaryTextColor: "#ffffff"
-    tertiaryBorderColor: "#2c5590"
-    tertiaryTextColor: "#ffffff"
-    errorBkgColor: "#3b6fb6"
-    errorTextColor: "#ffffff"
----
-flowchart TB
-    Clients["Clients<br/>StepIt Macro, ros2 CLI, RViz"] -- "commands, trajectories" --> Controllers
-    subgraph Node["ros2_control_node"]
-        Controllers["Controllers<br/>position, velocity,<br/>trajectory, joint states"] -- "command interfaces" --> Hardware["StepitHardware<br/>plugin, 30 Hz"]
-        Hardware -- "state interfaces" --> Controllers
-        Hardware --> Driver["Driver"]
-        Driver --> Default["DefaultDriver"]
-        Driver --> Fake["FakeDriver<br/>5 FakeMotor"]
-    end
-    Hardware -- "/motors/status" --> Clients
-    Default <-- "USB serial<br/>framed, CRC-16" --> Teensy
-    subgraph Board["The controller"]
-        Teensy["Teensy 4.x<br/>AccelStepper, 5 µs interrupt"] -- "step, dir, enable" --> Drivers["PiBot board<br/>5 x TMC2208"]
-    end
-    Drivers --> Motors["Stepper motors"]
-
-    classDef default fill:#3b6fb6,stroke:#2c5590,color:#ffffff
-```
+<!-- The source is diagrams/big-picture.mmd: change it, then run bin/render-diagrams.sh. -->
+<p align="center"><img src="diagrams/big-picture.svg" alt="Clients send commands and trajectories to the controllers of ros2_control_node, which reach StepitHardware through the command and state interfaces; StepitHardware publishes /motors/status and talks through the Driver interface to the DefaultDriver or the FakeDriver; the DefaultDriver talks over USB serial to the Teensy, which drives the PiBot board and the stepper motors." width="518"></p>
 
 The interface of the module:
 
@@ -144,73 +73,8 @@ The interface of the module:
 
 The includes follow the table:
 
-```mermaid
----
-config:
-  theme: base
-  themeCSS: ".edgeLabel p { padding: 4px 10px; }"
-  flowchart:
-    padding: 20
-    nodeSpacing: 40
-    rankSpacing: 50
-  class:
-    padding: 16
-  sequence:
-    boxMargin: 12
-    boxTextMargin: 8
-    noteMargin: 28
-    messageMargin: 40
-    actorMargin: 60
-    labelBoxWidth: 56
-    labelBoxHeight: 28
-  themeVariables:
-    primaryColor: "#3b6fb6"
-    primaryTextColor: "#ffffff"
-    primaryBorderColor: "#2c5590"
-    lineColor: "#8b949e"
-    textColor: "#4d86d6"
-    actorBkg: "#3b6fb6"
-    actorBorder: "#2c5590"
-    actorTextColor: "#ffffff"
-    actorLineColor: "#8b949e"
-    signalColor: "#8b949e"
-    signalTextColor: "#4d86d6"
-    noteBkgColor: "#3b6fb6"
-    noteTextColor: "#ffffff"
-    noteBorderColor: "#2c5590"
-    secondaryColor: "#3b6fb6"
-    tertiaryColor: "#3b6fb6"
-    clusterBkg: "transparent"
-    clusterBorder: "#8b949e"
-    titleColor: "#4d86d6"
-    edgeLabelBackground: "#3b6fb6"
-    classText: "#ffffff"
-    labelBoxBkgColor: "#3b6fb6"
-    labelBoxBorderColor: "#2c5590"
-    labelTextColor: "#ffffff"
-    loopTextColor: "#4d86d6"
-    mainBkg: "#3b6fb6"
-    nodeBorder: "#2c5590"
-    nodeTextColor: "#ffffff"
-    secondaryBorderColor: "#2c5590"
-    secondaryTextColor: "#ffffff"
-    tertiaryBorderColor: "#2c5590"
-    tertiaryTextColor: "#ffffff"
-    errorBkgColor: "#3b6fb6"
-    errorTextColor: "#ffffff"
----
-flowchart TB
-    Hardware["stepit_hardware"] --> Driver["stepit_driver"]
-    Hardware --> Msgs["stepit_motors_msgs"]
-    Hardware --> HI["hardware_interface"]
-    Driver --> Framed["framed_serial"]
-    Driver --> HI
-    Framed --> Serial["serial"]
-    Description["robot_description"] -- "package.xml" --> Driver
-    Tests["stepit_hardware_tests"] --> Driver
-
-    classDef default fill:#3b6fb6,stroke:#2c5590,color:#ffffff
-```
+<!-- The source is diagrams/packages.mmd: change it, then run bin/render-diagrams.sh. -->
+<p align="center"><img src="diagrams/packages.svg" alt="The packages and their includes: stepit_hardware on stepit_driver, stepit_motors_msgs and hardware_interface; stepit_driver on framed_serial, which uses serial, and on hardware_interface; robot_description and stepit_hardware_tests on stepit_driver." width="734"></p>
 
 `robot_description` loads the plugin by name, `stepit_driver/StepitHardware`, which `stepit_hardware` exports in [`hardware_interface.xml`](../src/stepit_hardware/hardware_interface.xml); its `package.xml` names `stepit_driver`, not `stepit_hardware`. The plugin keeps the namespace `stepit_driver` of the package it came from.
 
@@ -373,81 +237,8 @@ A rejected Move or Speed stops every motor before answering `0x12`: the host is 
 
 The longest flow: the trajectory controller is active, a client sends it a goal, and the hardware turns it into position commands, one cycle at a time, until the joint is there.
 
-```mermaid
----
-config:
-  theme: base
-  themeCSS: ".edgeLabel p { padding: 4px 10px; }"
-  flowchart:
-    padding: 20
-    nodeSpacing: 40
-    rankSpacing: 50
-  class:
-    padding: 16
-  sequence:
-    boxMargin: 12
-    boxTextMargin: 8
-    noteMargin: 28
-    messageMargin: 40
-    actorMargin: 60
-    labelBoxWidth: 56
-    labelBoxHeight: 28
-  themeVariables:
-    primaryColor: "#3b6fb6"
-    primaryTextColor: "#ffffff"
-    primaryBorderColor: "#2c5590"
-    lineColor: "#8b949e"
-    textColor: "#4d86d6"
-    actorBkg: "#3b6fb6"
-    actorBorder: "#2c5590"
-    actorTextColor: "#ffffff"
-    actorLineColor: "#8b949e"
-    signalColor: "#8b949e"
-    signalTextColor: "#4d86d6"
-    noteBkgColor: "#3b6fb6"
-    noteTextColor: "#ffffff"
-    noteBorderColor: "#2c5590"
-    secondaryColor: "#3b6fb6"
-    tertiaryColor: "#3b6fb6"
-    clusterBkg: "transparent"
-    clusterBorder: "#8b949e"
-    titleColor: "#4d86d6"
-    edgeLabelBackground: "#3b6fb6"
-    classText: "#ffffff"
-    labelBoxBkgColor: "#3b6fb6"
-    labelBoxBorderColor: "#2c5590"
-    labelTextColor: "#ffffff"
-    loopTextColor: "#4d86d6"
-    mainBkg: "#3b6fb6"
-    nodeBorder: "#2c5590"
-    nodeTextColor: "#ffffff"
-    secondaryBorderColor: "#2c5590"
-    secondaryTextColor: "#ffffff"
-    tertiaryBorderColor: "#2c5590"
-    tertiaryTextColor: "#ffffff"
-    errorBkgColor: "#3b6fb6"
-    errorTextColor: "#ffffff"
----
-sequenceDiagram
-    participant JTC as Trajectory controller
-    participant HW as StepitHardware
-    participant Drv as DefaultDriver
-    participant MCU as Teensy firmware
-    loop every cycle, 30 Hz
-        HW->>Drv: read(): get_status()
-        Drv->>MCU: Status 0x75
-        MCU-->>Drv: 0x11, 5 x id, position, velocity, distance
-        Drv-->>HW: motor states
-        Note over HW: copy each state to the joint of its id
-        HW-->>JTC: state interfaces
-        JTC->>HW: command.position of each joint
-        HW->>Drv: write(): set_position()
-        Drv->>MCU: Move 0x71, id and position per joint
-        Note over MCU: set the goals under writingMotorGoals
-        MCU-->>Drv: 0x11
-    end
-    Note over MCU: the interrupt steps each motor to its goal at its acceleration
-```
+<!-- The source is diagrams/trajectory-cycle.mmd: change it, then run bin/render-diagrams.sh. -->
+<p align="center"><img src="diagrams/trajectory-cycle.svg" alt="Every cycle at 30 Hz, StepitHardware reads the status of the motors from the Teensy through the DefaultDriver, gives the states to the trajectory controller, takes its position commands and sends them to the Teensy in a Move, whose interrupt then steps each motor to its goal." width="774"></p>
 
 Each cycle sends a new target, and AccelStepper plans from where the motor is to that target with its own acceleration and maximum speed: the controller never sends a velocity profile. The positions read back are the firmware's count of steps, not a measurement: the motors are open loop.
 
