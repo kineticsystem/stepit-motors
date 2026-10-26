@@ -130,7 +130,7 @@ The velocity trace in phase 2 is the result worth reading: `0.25 → 0.20 → 0.
 ./bin/test.sh
 
 # Firmware (needs PlatformIO and the Teensy udev rules)
-cd src/stepit_mcu && pio run -t upload
+cd src/stepit_mcu && pio run -e teensy41 -t upload
 
 # Against a connected board
 ./build/stepit_hardware_tests/get_info   --port /dev/ttyACM0

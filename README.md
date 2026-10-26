@@ -22,7 +22,7 @@
 
 ## Introduction
 
-StepIt Motors is a project to control stepper motors with a Teensy microcontroller and ROS2. Watch [this video](https://github.com/user-attachments/assets/e67d46ce-e133-4e34-bab8-7d924be3dee4)
+StepIt Motors is a project to control stepper motors with a Teensy 4.0 or Teensy 4.1 microcontroller and ROS2. Watch [this video](https://github.com/user-attachments/assets/e67d46ce-e133-4e34-bab8-7d924be3dee4)
 
 How StepIt Motors is built, and why, is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The other documents, on the hardware and the design of the changes, are listed in [docs/README.md](docs/README.md).
 
@@ -34,9 +34,9 @@ If you want to run StepIt Motors on your host machine, you must install ROS2. Pl
 
 By default, StepIt Motors runs in simulation mode so we do not an need actual hardware to play around with it.
 
-For a real application, we recommend attaching the stepper motors to a Teensy microcontroller 4.0 or 4.1. We can hook the motors in many different ways but we suggest the following hardware configuration.
+For a real application, we attach the stepper motors to a Teensy 4.0 or a Teensy 4.1. Both work the same: the firmware has a build for each, and drives the same pins, 0 to 15, which sit at the same places on the two boards. The Teensy 4.1 is longer and adds pins, an SD card slot and Ethernet, which StepIt Motors does not use. We can hook the motors in many different ways but we suggest the following hardware configuration.
 
-- 1 x [Teensy 4.1](https://www.pjrc.com/store/teensy41.html) or Teensy 4.0.
+- 1 x [Teensy 4.0](https://www.pjrc.com/store/teensy40.html) or [Teensy 4.1](https://www.pjrc.com/store/teensy41.html).
 - 1 x [PiBot multi-stepper motor driver board rev2.3 ](https://www.pibot.com/pibot-multi-stepper-motor-driver-board-rev2-3.html)
 - 5 x [TMC2208](https://shop.watterott.com/SilentStepStick-TMC2208-Stepper-Motor-Driver-with-soldered-pinheaders)
 - 5 x [SilentStepStick Protector](https://shop.watterott.com/SilentStepStick-Protector-for-Stepper-Motor-Drivers), one under each TMC2208: see [Protecting the Drivers](#protecting-the-drivers).
@@ -108,12 +108,32 @@ sudo udevadm control --reload-rules && sudo udevadm trigger
 
 If necessary, unplug/replug the Teensy.
 
-To flash the microcontroller code into the Teensy:
+The PlatformIO project, in [`src/stepit_mcu`](src/stepit_mcu), has one build for each board, named after it in [`platformio.ini`](src/stepit_mcu/platformio.ini):
 
-- Open VSCode
-- Install the extension PlarformIO
-- Open the subfolder `stepit_mcu` in VSCode
-- Select the correct device and flash it
+| Build | Board |
+|---|---|
+| `teensy40` | Teensy 4.0, the default. |
+| `teensy41` | Teensy 4.1. |
+
+Flash the build of your board: the code and the pins are the same, but each build is linked for the memory of its board.
+
+To flash the Teensy from Visual Studio Code:
+
+- Install the extension PlatformIO.
+- Open the folder `src/stepit_mcu`.
+- Choose the build of your board, `env:teensy40` or `env:teensy41`, in the status bar, and run Upload.
+
+To flash it from the command line, with [PlatformIO Core](https://docs.platformio.org/en/latest/core/installation/index.html), run the command of your board:
+
+```bash
+cd src/stepit_mcu
+pio run -e teensy40 -t upload    # Teensy 4.0
+pio run -e teensy41 -t upload    # Teensy 4.1
+```
+
+The command line also works on a Raspberry Pi 5, so we can flash the Teensy of a portable rig on the Pi itself: PlatformIO downloads the compiler and the loader for ARM64 on the first build.
+
+The upload uses the command line loader of the Teensy, which prints `Programming...` and `Booting` once the board is flashed. When the Teensy runs a program that the loader cannot restart, it prints `Waiting for Teensy device... (hint: press the reset button)`: press the program button of the Teensy once, and the upload goes on.
 
 The microcontroller is usually shown as `/dev/ttyACM0`. To drive it instead of the fake motors, start the application with `use_dummy:=false`, see [Running the Application](#running-the-application).
 

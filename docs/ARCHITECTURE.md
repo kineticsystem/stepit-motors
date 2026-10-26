@@ -35,7 +35,7 @@ It follows one idea: **`StepitHardware` talks to the motors only through the `Dr
 
 ## The Big Picture
 
-The robot is up to five stepper motors, each driven by a TMC2208 on a PiBot board, whose step, direction and enable pins a Teensy 4.x drives. The Teensy runs [AccelStepper](https://www.airspayce.com/mikem/arduino/AccelStepper/) on a timer interrupt and answers the host over USB. On the host, `ros2_control_node` loads `StepitHardware` as a plugin, and the controllers write the joints' commands into it.
+The robot is up to five stepper motors, each driven by a TMC2208 on a PiBot board, whose step, direction and enable pins a Teensy 4.0 or 4.1 drives. The Teensy runs [AccelStepper](https://www.airspayce.com/mikem/arduino/AccelStepper/) on a timer interrupt and answers the host over USB. On the host, `ros2_control_node` loads `StepitHardware` as a plugin, and the controllers write the joints' commands into it.
 
 <!-- The source is diagrams/big-picture.mmd: change it, then run bin/render-diagrams.sh. -->
 <p align="center"><img src="diagrams/big-picture.svg" alt="Clients send commands and trajectories to the controllers of ros2_control_node, which reach StepitHardware through the command and state interfaces; StepitHardware publishes /motors/status and talks through the Driver interface to the DefaultDriver or the FakeDriver; the DefaultDriver talks over USB serial to the Teensy, which drives the PiBot board and the stepper motors." width="518"></p>
@@ -68,7 +68,7 @@ The interface of the module:
 | `robot_description` | The URDF of the sample robot, its `ros2_control` block, the controllers, RViz, and `robot.launch.py`. | the controllers, `stepit_driver` | Hold the configuration of one robot: the launch arguments do. |
 | `robot_bringup` | `launch.py`, which includes `robot.launch.py`. | | |
 | `stepit_hardware_tests` | `get_info` and `get_status`, programs that ask a real Teensy, for checking a board by hand. | `stepit_driver`, `framed_serial` | Run in CI: they need the board. |
-| `stepit_mcu` | The firmware, a PlatformIO project, not built by colcon. | AccelStepper, Teensyduino | |
+| `stepit_mcu` | The firmware, a PlatformIO project with a build for the Teensy 4.0 and one for the 4.1, not built by colcon. | AccelStepper, Teensyduino | |
 | `serial`, `framed-serial` | The serial port and the framed protocol, submodules in `modules`, fetched by CI through `stepit.repos`. `framed-serial` is shared with StepIt Freezer, at the same commit. | | |
 
 The includes follow the table:
@@ -190,7 +190,7 @@ The major version is the layout of the bytes on the wire: `VERSION_MAJOR` in the
 
 ## The Firmware
 
-The firmware, in [`src/stepit_mcu`](../src/stepit_mcu), is Arduino code for a Teensy 4.1 (`board = teensy41` in `platformio.ini`; a Teensy 4.0 takes `board = teensy40`). It drives five AccelStepper motors on these pins, the colours of the wires on our board:
+The firmware, in [`src/stepit_mcu`](../src/stepit_mcu), is Arduino code for a Teensy 4.0 or a Teensy 4.1. `platformio.ini` has one build for each, `teensy40`, the default, and `teensy41`, which differ only in their `board`: the two boards have the same processor, and the firmware uses nothing the 4.1 adds. It drives five AccelStepper motors on these pins, the same on both boards, the colours of the wires on our board:
 
 | Motor | Enable, red | Direction, green | Step, yellow |
 |---|---|---|---|
@@ -293,7 +293,7 @@ What has no automated test:
 | drive fewer or more motors | the joints of `stepit.ros2_control.xacro` and `controllers.yaml`; `NUMBER_OF_MOTORS` and the pins in `main.cpp`, and `kMotorCount` in `hardware_limits.hpp`. `on_init` requires the ids to run from 0 to the number of joints minus 1, and `read()` that the controller reports exactly the configured motors, while the firmware reports all of its motors. |
 | add a hardware parameter | a `<param>` in `stepit.ros2_control.xacro`, a `xacro:arg` and a launch argument in `robot.launch.py`, and its reading in the factory that uses it, with the same name. |
 | add another kind of controller board | a class implementing `Driver`, and a factory that creates it: `StepitHardware` does not change. |
-| run on a Teensy 4.0 | `board = teensy40` in `platformio.ini`: the pins are the same. |
+| build for another Teensy | an `[env:<board>]` in `platformio.ini`, beside `teensy40` and `teensy41`, and the pins in `main.cpp` if the board lacks pins 0 to 15. The 5 µs interrupt needs a processor as fast as the Teensy 4's, 600 MHz. |
 
 ## Design Decisions and Trade-offs
 
@@ -312,5 +312,7 @@ What has no automated test:
 **A release stops the motor; a new claim starts from nothing.** The firmware keeps executing its last goal, so a controller that lets go would otherwise leave a motor turning, and a controller that starts would otherwise resend a stale command. Both are decided in `perform_command_mode_switch()`, the only place that knows which interfaces a controller owns.
 
 **The status is recorded in the loop and published outside it.** `read()` and `write()` know first when the controller is lost, but publishing from the realtime loop would allocate and could block it. They record the change; a timer on the hardware's node publishes it within 100 ms, and again every second, so that a page can tell a dead node from a quiet one.
+
+**One firmware for the Teensy 4.0 and 4.1.** The two boards have the same processor, and the pins 0 to 15 at the same places, so one code and one wiring serve both, and a rig takes the smaller and cheaper 4.0 or the 4.1 it already has. The price is a build per board in `platformio.ini`: each is linked for the memory of its board, so we flash the build of the board we have.
 
 **Open loop.** The motors have no encoders. The positions are the firmware's count of steps, true as long as no step is lost, which is why the limits are measured on the board and enforced at both ends, and why every stop decelerates.

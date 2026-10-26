@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-StepIt is a ROS 2 (Jazzy) project for controlling stepper motors via a Teensy 4.x microcontroller. It uses `ros2_control` as the hardware abstraction layer. The robot can run in simulation (fake motors) without any physical hardware.
+StepIt is a ROS 2 (Jazzy) project for controlling stepper motors via a Teensy 4.0 or 4.1 microcontroller. It uses `ros2_control` as the hardware abstraction layer. The robot can run in simulation (fake motors) without any physical hardware.
 
 ## Build & Development Commands
 
@@ -68,7 +68,7 @@ How it is built, and why, is in [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md).
 | `robot_description` | URDF/xacro robot model, RViz config, controllers config, `robot.launch.py` |
 | `robot_bringup` | Top-level launch: includes `robot_description` |
 | `stepit_hardware_tests` | Integration tests requiring real hardware |
-| `stepit_mcu` | PlatformIO project for Teensy firmware (not built by colcon) |
+| `stepit_mcu` | PlatformIO project for Teensy firmware (not built by colcon): one build per board, `teensy40` (the default) and `teensy41`, the same code and pins |
 
 ### Submodules (`modules/`)
 
@@ -101,6 +101,10 @@ Tests use **GMock** (`ament_add_gmock`). Mocks live alongside tests:
 - `src/stepit_driver/tests/mock/mock_framed_serial.hpp` — mocks the serial layer for `test_default_driver`
 - `src/stepit_hardware/tests/mock/mock_driver.hpp` / `mock_driver_factory.hpp` — mock the driver for `test_stepit_hardware`
 - `src/stepit_hardware/tests/fake/fake_hardware_info.hpp` — constructs `HardwareInfo` for unit tests without a URDF
+
+## Pull Request Notes
+
+Each pull request has a notes file in [docs/pr/](../docs/pr/README.md): what we discussed, what we chose, and why. One file per pull request, written while the branch is open. Keep them simple: short sentences, one idea per paragraph, and a Mermaid diagram when it explains faster than words.
 
 ## Architecture and Review Documents
 
