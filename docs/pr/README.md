@@ -7,6 +7,7 @@ Each pull request has a notes file here. It keeps what the pull request does not
 | Note | Pull request |
 |---|---|
 | [025-teensy-40-and-41.md](025-teensy-40-and-41.md) | [#25](https://github.com/kineticsystem/stepit-motors/pull/25) The Teensy 4.0 and the Teensy 4.1 |
+| [026-inverted-joints.md](026-inverted-joints.md) | [#26](https://github.com/kineticsystem/stepit-motors/pull/26) Inverted joints |
 
 ## How to Write One
 
