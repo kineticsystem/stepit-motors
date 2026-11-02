@@ -22,6 +22,7 @@
 #include <limits>
 #include <vector>
 #include <string>
+#include <unordered_map>
 #include <cctype>
 #include <cmath>
 
@@ -55,6 +56,24 @@ constexpr std::chrono::milliseconds kStatusCheckPeriod{ 100 };
 constexpr std::chrono::seconds kStatusPublishPeriod{ 1 };
 
 const auto kLogger = rclcpp::get_logger("stepit_hardware");
+
+namespace
+{
+std::string lower(std::string text)
+{
+  std::transform(text.begin(), text.end(), text.begin(),
+                 [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+  return text;
+}
+
+// Whether a parameter is set to true, as xacro writes a Python bool: "True".
+// A missing parameter is false.
+bool is_true(const std::unordered_map<std::string, std::string>& parameters, const std::string& name)
+{
+  const auto it = parameters.find(name);
+  return it != parameters.end() && lower(it->second) == "true";
+}
+}  // namespace
 
 StepitHardware::StepitHardware()
 {
@@ -99,11 +118,12 @@ StepitHardware::on_init(const hardware_interface::HardwareComponentInterfacePara
       joints_[i].id = static_cast<uint8_t>(std::stoi(info_.joints[i].parameters.at("id")));
       joints_[i].acceleration = std::stod(info_.joints[i].parameters.at("acceleration"));
       joints_[i].max_velocity = std::stod(info_.joints[i].parameters.at("max_velocity"));
+      joints_[i].direction = is_true(info_.joints[i].parameters, "inverted") ? -1.0 : 1.0;
       joints_[i].state.position = kNaN;
       joints_[i].state.velocity = kNaN;
       joints_[i].command.position = kNaN;
       joints_[i].command.velocity = kNaN;
-      RCLCPP_INFO(kLogger, "joint_id %d: %d", i, joints_[i].id);
+      RCLCPP_INFO(kLogger, "joint_id %d: %d%s", i, joints_[i].id, joints_[i].direction < 0 ? ", inverted" : "");
 
       // The controller reports one state per physical motor, indexed 0..N-1,
       // so a configured id must fall in that range. Reject it here with a
@@ -132,10 +152,7 @@ StepitHardware::on_init(const hardware_interface::HardwareComponentInterfacePara
 
     const auto& parameters = info_.hardware_parameters;
     // As DefaultDriverFactory decides: the fake driver when use_dummy is not false.
-    std::string use_dummy = parameters.count("use_dummy") ? parameters.at("use_dummy") : "false";
-    std::transform(use_dummy.begin(), use_dummy.end(), use_dummy.begin(),
-                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-    const bool fake = use_dummy != "false";
+    const bool fake = !parameters.count("use_dummy") ? false : lower(parameters.at("use_dummy")) != "false";
     device_ = fake ? "fake" : (parameters.count("usb_port") ? parameters.at("usb_port") : "");
     set_status(false, "Not connected yet.");
 
@@ -384,8 +401,8 @@ hardware_interface::return_type StepitHardware::read(const rclcpp::Time& time,
       // motor_states_are_valid() guarantees every reported id maps to a
       // distinct configured joint, so this lookup cannot miss or collide.
       const std::size_t index = joint_index_by_id_.at(state.id());
-      joints_[index].state.position = state.position();
-      joints_[index].state.velocity = state.velocity();
+      joints_[index].state.position = joints_[index].direction * state.position();
+      joints_[index].state.velocity = joints_[index].direction * state.velocity();
     }
 
     return hardware_interface::return_type::OK;
@@ -435,11 +452,11 @@ hardware_interface::return_type StepitHardware::write(const rclcpp::Time& time,
       const bool stop_pending = joint.stop_pending.exchange(false);
       if (velocity_commanded(joint))
       {
-        velocities.emplace_back(VelocityGoal{ joint.id, joint.command.velocity });
+        velocities.emplace_back(VelocityGoal{ joint.id, joint.direction * joint.command.velocity });
       }
       else if (!velocity_mode && position_commanded(joint))
       {
-        positions.emplace_back(PositionGoal{ joint.id, joint.command.position });
+        positions.emplace_back(PositionGoal{ joint.id, joint.direction * joint.command.position });
       }
       else if (stop_pending)
       {

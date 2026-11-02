@@ -54,9 +54,10 @@ The interface of the module:
 | `use_dummy` | launch argument, `true` | The fake motors, or the Teensy on `usb_port`. |
 | `usb_port` | launch argument, `/dev/ttyACM0` | The serial port of the Teensy. |
 | `baud_rate` | launch argument, `9600` | Passed to the hardware as `baud_rate`, which the serial factory does not read: see [DefaultDriver](#defaultdriver). |
+| `inverted_joints` | launch argument, empty | The joints whose motor turns the other way, separated by spaces, e.g. `joint1 joint2`. |
 | `launch_rviz` | launch argument, `false` | Starts RViz once the joint state broadcaster runs. |
 
-[`robot.launch.py`](../src/robot_description/launch/robot.launch.py) passes `use_dummy`, `usb_port` and `baud_rate` to xacro, which writes them as the `<param>` of the `<hardware>` in [`stepit.ros2_control.xacro`](../src/robot_description/urdf/stepit.ros2_control.xacro): a robot is configured by the launch arguments, never by editing the xacro. StepIt Macro sets them in the section `robot` of its `rig.yaml`, and shows `/motors/status` as an icon of its page, which is why the hardware must keep the name `motors`.
+[`robot.launch.py`](../src/robot_description/launch/robot.launch.py) passes `use_dummy`, `usb_port` and `baud_rate` to xacro, which writes them as the `<param>` of the `<hardware>` in [`stepit.ros2_control.xacro`](../src/robot_description/urdf/stepit.ros2_control.xacro), and `inverted_joints` as the `<param name="inverted">` of each joint, `True` or `False`; it refuses a name the robot has no joint of: a robot is configured by the launch arguments, never by editing the xacro. StepIt Macro sets them in the section `robot` of its `rig.yaml`, and shows `/motors/status` as an icon of its page, which is why the hardware must keep the name `motors`.
 
 ## The Packages
 
@@ -314,5 +315,7 @@ What has no automated test:
 **The status is recorded in the loop and published outside it.** `read()` and `write()` know first when the controller is lost, but publishing from the realtime loop would allocate and could block it. They record the change; a timer on the hardware's node publishes it within 100 ms, and again every second, so that a page can tell a dead node from a quiet one.
 
 **One firmware for the Teensy 4.0 and 4.1.** The two boards have the same processor, and the pins 0 to 15 at the same places, so one code and one wiring serve both, and a rig takes the smaller and cheaper 4.0 or the 4.1 it already has. The price is a build per board in `platformio.ini`: each is linked for the memory of its board, so we flash the build of the board we have.
+
+**The direction of a motor is turned on the host.** A motor wired the other way, or mounted facing the other way, turns backwards. `StepitHardware` multiplies the positions and the velocities of an inverted joint by -1, in its commands and in its states, so the joint, the controllers and everything above them keep their direction, and the firmware stays the same for every robot. Swapping the wires of one coil would do the same with no software, but the box must be opened for it; the firmware's own inversion of the direction pin would need a flash for each robot.
 
 **Open loop.** The motors have no encoders. The positions are the firmware's count of steps, true as long as no step is lost, which is why the limits are measured on the board and enforced at both ends, and why every stop decelerates.

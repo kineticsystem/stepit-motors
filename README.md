@@ -239,8 +239,9 @@ ros2 launch robot_bringup launch.py use_dummy:=false usb_port:=/dev/ttyACM0
 | `use_dummy` | `true` | Use fake motors instead of the microcontroller. |
 | `usb_port` | `/dev/ttyACM0` | Serial port of the microcontroller. |
 | `baud_rate` | `9600` | Speed of the serial port, the one of the firmware. |
+| `inverted_joints` | | The joints whose motor turns the other way, separated by spaces, e.g. `joint1 joint2`: their positions and velocities change sign, in the commands and in the states. |
 
-They are xacro arguments of [`stepit.urdf.xacro`](src/robot_description/urdf/stepit.urdf.xacro), which passes them to the `<hardware>` of [`stepit.ros2_control.xacro`](src/robot_description/urdf/stepit.ros2_control.xacro).
+All but `launch_rviz` are xacro arguments of [`stepit.urdf.xacro`](src/robot_description/urdf/stepit.urdf.xacro), which passes them to [`stepit.ros2_control.xacro`](src/robot_description/urdf/stepit.ros2_control.xacro): `inverted_joints` to the joints, the others to the `<hardware>`.
 
 The hardware, named `motors`, tells whether it talks to the controller on `/motors/status` (`stepit_motors_msgs/msg/MotorsStatus`): `connected`, the serial port, or `fake`, in `device`, and in `message` why it is not connected, e.g. the error of the serial port. ros2_control gives the hardware a node named after it, which publishes the status when it changes and every second, and keeps the last one for a client that subscribes late. When a read or a write fails, e.g. because the Teensy was unplugged, ros2_control deactivates the hardware, and it stays disconnected until `ros2_control_node` starts again:
 

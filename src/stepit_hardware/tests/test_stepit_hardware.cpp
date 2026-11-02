@@ -495,6 +495,137 @@ TEST(TestStepitHardware, write_positions)
 }
 
 /**
+ * The hardware of the tests, FakeHardwareInfo, with joint2 inverted, as xacro
+ * writes the parameter: a Python bool.
+ */
+hardware_interface::HardwareInfo hardware_info_with_joint2_inverted()
+{
+  hardware_interface::HardwareInfo info = FakeHardwareInfo{};
+  info.joints[1].parameters["inverted"] = "True";
+  info.joints[2].parameters["inverted"] = "False";
+  return info;
+}
+
+/**
+ * Configure and activate a hardware that talks to the given driver.
+ */
+std::unique_ptr<stepit_driver::StepitHardware> activated_hardware(std::unique_ptr<MockDriver> mock_driver,
+                                                                  const hardware_interface::HardwareInfo& info)
+{
+  ON_CALL(*mock_driver, connect()).WillByDefault(Return(true));
+  ON_CALL(*mock_driver, get_info(_)).WillByDefault(Return(handshake_info()));
+  ON_CALL(*mock_driver, get_status(_)).WillByDefault(Return(handshake_status()));
+  ON_CALL(*mock_driver, configure(Matcher<const ConfigCommand&>(_)))
+      .WillByDefault(Return(AcknowledgeResponse{ Response::Status::Success }));
+  auto stepit_hardware =
+      std::make_unique<stepit_driver::StepitHardware>(std::make_unique<MockDriverFactory>(std::move(mock_driver)));
+  hardware_interface::HardwareComponentInterfaceParams init_params;
+  init_params.hardware_info = info;
+  EXPECT_EQ(hardware_interface::CallbackReturn::SUCCESS, stepit_hardware->on_init(init_params));
+  return stepit_hardware;
+}
+
+void configure_and_activate(stepit_driver::StepitHardware& stepit_hardware)
+{
+  rclcpp_lifecycle::State unconfigured{ lifecycle_msgs::msg::State::PRIMARY_STATE_UNCONFIGURED,
+                                        hardware_interface::lifecycle_state_names::UNCONFIGURED };
+  ASSERT_EQ(hardware_interface::CallbackReturn::SUCCESS, stepit_hardware.on_configure(unconfigured));
+  rclcpp_lifecycle::State inactive{ lifecycle_msgs::msg::State::PRIMARY_STATE_INACTIVE,
+                                    hardware_interface::lifecycle_state_names::INACTIVE };
+  ASSERT_EQ(hardware_interface::CallbackReturn::SUCCESS, stepit_hardware.on_activate(inactive));
+}
+
+/**
+ * An inverted joint reads the position and the velocity of its motor with the
+ * opposite sign; the other joints, "False" included, read them as they are.
+ */
+TEST(TestStepitHardware, inverted_joint_reads_opposite_states)
+{
+  // clang-format off
+  const StatusResponse mocked_response{
+      Response::Status::Success,
+      {
+          MotorState{ 0, 1.5, 0.5, 0 },
+          MotorState{ 1, 2.5, 0.75, 0 },
+          MotorState{ 2, 3.5, 1.0, 0 },
+          MotorState{ 3, 0, 0, 0 },
+          MotorState{ 4, 0, 0, 0 }
+      }
+  };
+  // clang-format on
+
+  auto mock_driver = std::make_unique<MockDriver>();
+  EXPECT_CALL(*mock_driver, get_status(_)).Times(2).WillRepeatedly(Return(mocked_response));
+  auto stepit_hardware = activated_hardware(std::move(mock_driver), hardware_info_with_joint2_inverted());
+  auto state_interfaces = stepit_hardware->on_export_state_interfaces();
+  configure_and_activate(*stepit_hardware);
+
+  ASSERT_EQ(hardware_interface::return_type::OK,
+            stepit_hardware->read(rclcpp::Time{}, rclcpp::Duration::from_seconds(0)));
+
+  EXPECT_EQ(1.5, state_interfaces[0]->get_optional().value());    // joint1/position
+  EXPECT_EQ(0.5, state_interfaces[1]->get_optional().value());    // joint1/velocity
+  EXPECT_EQ(-2.5, state_interfaces[2]->get_optional().value());   // joint2/position, inverted
+  EXPECT_EQ(-0.75, state_interfaces[3]->get_optional().value());  // joint2/velocity, inverted
+  EXPECT_EQ(3.5, state_interfaces[4]->get_optional().value());    // joint3/position
+  EXPECT_EQ(1.0, state_interfaces[5]->get_optional().value());    // joint3/velocity
+}
+
+/**
+ * An inverted joint sends its motor the opposite of its position command.
+ */
+TEST(TestStepitHardware, inverted_joint_writes_opposite_positions)
+{
+  PositionCommand actual_request{ {} };
+  auto mock_driver = std::make_unique<MockDriver>();
+  EXPECT_CALL(*mock_driver, set_position(_, Matcher<const PositionCommand&>(_)))
+      .WillOnce(DoAll(SaveArg<1>(&actual_request), Return(AcknowledgeResponse{ Response::Status::Success })));
+  auto stepit_hardware = activated_hardware(std::move(mock_driver), hardware_info_with_joint2_inverted());
+  auto command_interfaces = stepit_hardware->on_export_command_interfaces();
+  configure_and_activate(*stepit_hardware);
+  ASSERT_EQ(hardware_interface::return_type::OK,
+            stepit_hardware->perform_command_mode_switch({ "joint1/position", "joint2/position" }, {}));
+
+  std::ignore = command_interfaces[0]->set_value(0.5);   // joint1/position
+  std::ignore = command_interfaces[2]->set_value(0.75);  // joint2/position
+  ASSERT_EQ(hardware_interface::return_type::OK,
+            stepit_hardware->write(rclcpp::Time{}, rclcpp::Duration::from_seconds(0)));
+
+  ASSERT_EQ(2u, actual_request.goals().size());
+  EXPECT_EQ(0, actual_request.goals()[0].motor_id());
+  EXPECT_EQ(0.5, actual_request.goals()[0].position());
+  EXPECT_EQ(1, actual_request.goals()[1].motor_id());
+  EXPECT_EQ(-0.75, actual_request.goals()[1].position());
+}
+
+/**
+ * An inverted joint sends its motor the opposite of its velocity command.
+ */
+TEST(TestStepitHardware, inverted_joint_writes_opposite_velocities)
+{
+  VelocityCommand actual_request{ {} };
+  auto mock_driver = std::make_unique<MockDriver>();
+  EXPECT_CALL(*mock_driver, set_velocity(_, Matcher<const VelocityCommand&>(_)))
+      .WillOnce(DoAll(SaveArg<1>(&actual_request), Return(AcknowledgeResponse{ Response::Status::Success })));
+  auto stepit_hardware = activated_hardware(std::move(mock_driver), hardware_info_with_joint2_inverted());
+  auto command_interfaces = stepit_hardware->on_export_command_interfaces();
+  configure_and_activate(*stepit_hardware);
+  ASSERT_EQ(hardware_interface::return_type::OK,
+            stepit_hardware->perform_command_mode_switch({ "joint1/velocity", "joint2/velocity" }, {}));
+
+  std::ignore = command_interfaces[1]->set_value(0.5);   // joint1/velocity
+  std::ignore = command_interfaces[3]->set_value(0.75);  // joint2/velocity
+  ASSERT_EQ(hardware_interface::return_type::OK,
+            stepit_hardware->write(rclcpp::Time{}, rclcpp::Duration::from_seconds(0)));
+
+  ASSERT_EQ(2u, actual_request.goals().size());
+  EXPECT_EQ(0, actual_request.goals()[0].motor_id());
+  EXPECT_EQ(0.5, actual_request.goals()[0].velocity());
+  EXPECT_EQ(1, actual_request.goals()[1].motor_id());
+  EXPECT_EQ(-0.75, actual_request.goals()[1].velocity());
+}
+
+/**
  * In this test we set positions goals on the hardware interface.
  * We execute a write operation and expect to see one data frame delivered
  * to the actual hardware, setting positions.
