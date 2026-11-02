@@ -1,6 +1,8 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
-  <xacro:macro name="stepit_ros2_control" params="name use_dummy:=true usb_port:=/dev/ttyACM0 baud_rate:=9600">
+  <!-- inverted_joints: the names of the joints whose motor turns the other
+       way, separated by spaces, e.g. "joint1 joint2". -->
+  <xacro:macro name="stepit_ros2_control" params="name use_dummy:=true usb_port:=/dev/ttyACM0 baud_rate:=9600 inverted_joints:=''">
 
     <ros2_control name="${name}" type="system">
       <hardware>
@@ -12,6 +14,7 @@
       </hardware>
       <joint name="joint1">
         <param name="id">0</param>
+        <param name="inverted">${'joint1' in inverted_joints.split()}</param>
         <param name="acceleration">12.5663706143592</param> <!-- 2 rotations/s^2 -->
         <param name="max_velocity">18.8495559215388</param> <!-- 3 rotations/s -->
         <command_interface name="position" />
@@ -21,6 +24,7 @@
       </joint>
       <joint name="joint2">
         <param name="id">1</param>
+        <param name="inverted">${'joint2' in inverted_joints.split()}</param>
         <param name="acceleration">12.5663706143592</param> <!-- 2 rotations/s^2 -->
         <param name="max_velocity">18.8495559215388</param> <!-- 3 rotations/s -->
         <command_interface name="position" />
@@ -30,6 +34,7 @@
       </joint>
       <joint name="joint3">
         <param name="id">2</param>
+        <param name="inverted">${'joint3' in inverted_joints.split()}</param>
         <param name="acceleration">12.5663706143592</param> <!-- 2 rotations/s^2 -->
         <param name="max_velocity">18.8495559215388</param> <!-- 3 rotations/s -->
         <command_interface name="position" />
@@ -39,6 +44,7 @@
       </joint>
       <joint name="joint4">
         <param name="id">3</param>
+        <param name="inverted">${'joint4' in inverted_joints.split()}</param>
         <param name="acceleration">12.5663706143592</param> <!-- 2 rotations/s^2 -->
         <param name="max_velocity">18.8495559215388</param> <!-- 3 rotations/s -->
         <command_interface name="position" />
@@ -48,6 +54,7 @@
       </joint>
       <joint name="joint5">
         <param name="id">4</param>
+        <param name="inverted">${'joint5' in inverted_joints.split()}</param>
         <param name="acceleration">12.5663706143592</param> <!-- 2 rotations/s^2 -->
         <param name="max_velocity">18.8495559215388</param> <!-- 3 rotations/s -->
         <command_interface name="position" />

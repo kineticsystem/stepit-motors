@@ -8,10 +8,12 @@
   <xacro:arg name="use_dummy" default="true" />
   <xacro:arg name="usb_port" default="/dev/ttyACM0" />
   <xacro:arg name="baud_rate" default="9600" />
+  <xacro:arg name="inverted_joints" default="" />
   <!-- Its name is also the name of its node: the hardware publishes its
        connection on /motors/status. -->
   <xacro:stepit_ros2_control name="motors"
                              use_dummy="$(arg use_dummy)"
                              usb_port="$(arg usb_port)"
-                             baud_rate="$(arg baud_rate)" />
+                             baud_rate="$(arg baud_rate)"
+                             inverted_joints="$(arg inverted_joints)" />
 </robot>

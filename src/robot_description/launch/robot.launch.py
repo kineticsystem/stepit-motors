@@ -37,6 +37,8 @@ from launch.substitutions import (
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
+import xml.dom.minidom
+
 import yaml
 import xacro
 
@@ -67,11 +69,25 @@ def launch_setup(context, *_args, **_kwargs):
     # The hardware, as the xacro arguments of the same names.
     hardware = {
         name: LaunchConfiguration(name).perform(context)
-        for name in ("use_dummy", "usb_port", "baud_rate")
+        for name in ("use_dummy", "usb_port", "baud_rate", "inverted_joints")
     }
     robot_description_content = xacro.process_file(
         description_file, mappings=hardware
     ).toxml()
+
+    # A joint named in inverted_joints that the robot does not have would be
+    # ignored, and its motor left turning the wrong way: refuse it.
+    robot_joints = {
+        joint.getAttribute("name")
+        for joint in xml.dom.minidom.parseString(
+            robot_description_content
+        ).getElementsByTagName("joint")
+    }
+    unknown = set(hardware["inverted_joints"].split()) - robot_joints
+    if unknown:
+        raise RuntimeError(
+            f"inverted_joints names joints the robot does not have: {sorted(unknown)}"
+        )
 
     with open(controllers_config_file, "r") as f:
         controllers_config = yaml.safe_load(f)
@@ -257,6 +273,12 @@ def generate_launch_description():
             "baud_rate",
             default_value="9600",
             description="Speed of the serial port, the one of the firmware.",
+        ),
+        DeclareLaunchArgument(
+            "inverted_joints",
+            default_value="",
+            description="The joints whose motor turns the other way, separated"
+            " by spaces, e.g. 'joint1 joint2'.",
         ),
         OpaqueFunction(function=launch_setup),
     ]

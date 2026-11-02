@@ -162,6 +162,11 @@ private:
     uint8_t id = 0;
     double acceleration = 0.0;
     double max_velocity = 0.0;
+    // -1 when the joint's parameter `inverted` is true: the motor turns the
+    // other way, e.g. after its cable was wired the other way round. The
+    // joint's positions and velocities are those of the motor times this, in
+    // both directions, so the joint and the controller always agree.
+    double direction = 1.0;
     JointValue state{};
     JointValue command{};
 
