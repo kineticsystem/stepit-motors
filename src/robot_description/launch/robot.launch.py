@@ -190,6 +190,21 @@ def launch_setup(context, *_args, **_kwargs):
         ],
     )
 
+    # The same controller on the velocity interfaces, for a path that must be
+    # followed in time. Loaded but inactive, like the forward controllers.
+    velocity_trajectory_controller_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=[
+            "velocity_trajectory_controller",
+            "-c",
+            "/controller_manager",
+            "--param-file",
+            controllers_config_file,
+            "--inactive",
+        ],
+    )
+
     # robot_state_publisher uses the URDF specified by the parameter robot
     # description and the joint positions from the topic /joint_states to
     # calculate the forward kinematics of the robot and publish the results via
@@ -239,6 +254,7 @@ def launch_setup(context, *_args, **_kwargs):
         velocity_controller_spawner,
         position_controller_spawner,
         joint_trajectory_controller_spawner,
+        velocity_trajectory_controller_spawner,
         robot_state_publisher_node,
     ]
     return nodes_to_start

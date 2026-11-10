@@ -50,6 +50,7 @@ The interface of the module:
 | `/motors/status` | `stepit_motors_msgs/msg/MotorsStatus` topic | Whether the hardware talks to the controller, the serial port or `fake`, and why not. Latched, on a change and every second. |
 | `joint_state_broadcaster` | controller, active | Publishes `/joint_states`. |
 | `joint_trajectory_controller` | controller, active | Follows a `JointTrajectory` on the `position` interfaces. |
+| `velocity_trajectory_controller` | controller, inactive | Follows a `JointTrajectory` on the `velocity` interfaces, for a path that must be followed in time. |
 | `position_controller`, `velocity_controller` | controllers, inactive | Forward a `Float64MultiArray` of positions or velocities on `/<controller>/commands` once activated. |
 | `use_dummy` | launch argument, `true` | The fake motors, or the Teensy on `usb_port`. |
 | `usb_port` | launch argument, `/dev/ttyACM0` | The serial port of the Teensy. |
@@ -96,7 +97,7 @@ The checks of `on_configure` turn what would be an opaque rejection by the firmw
 
 ### Read and Write
 
-`ros2_control_node` calls `read()` and `write()` in its realtime loop, at the `update_rate` of [`controllers.yaml`](../src/robot_description/config/controllers.yaml), 30 Hz. Each makes at most one request and one response over the serial port, waiting at most the `timeout` of the hardware, 0.2 s. They never publish: a change of the connection goes through `set_status()`, which only records it.
+`ros2_control_node` calls `read()` and `write()` in its realtime loop, at the `update_rate` of [`controllers.yaml`](../src/robot_description/config/controllers.yaml), 100 Hz. Each makes at most one request and one response over the serial port, waiting at most the `timeout` of the hardware, 0.2 s. On a Raspberry Pi 5 with a Teensy 4.0, a cycle takes 1.6 ms on average and 2.7 ms at most, well within the 10 ms of a cycle. They never publish: a change of the connection goes through `set_status()`, which only records it.
 
 - **`read()`** asks `get_status()` and copies each motor's position and velocity into the joint its id maps to, never trusting the id as an index. A status that does not report exactly the configured motors returns `ERROR`.
 - **`write()`** sends what the active controllers command. A joint is commanded only when its interface is claimed and its command is not NaN. Velocity takes precedence: when any joint is velocity controlled, no position goal is sent in that cycle. A joint released by its controller and commanded by nothing gets a velocity of 0, once.
@@ -239,7 +240,7 @@ A rejected Move or Speed stops every motor before answering `0x12`: the host is 
 The longest flow: the trajectory controller is active, a client sends it a goal, and the hardware turns it into position commands, one cycle at a time, until the joint is there.
 
 <!-- The source is diagrams/trajectory-cycle.mmd: change it, then run bin/render-diagrams.sh. -->
-<p align="center"><img src="diagrams/trajectory-cycle.svg" alt="Every cycle at 30 Hz, StepitHardware reads the status of the motors from the Teensy through the DefaultDriver, gives the states to the trajectory controller, takes its position commands and sends them to the Teensy in a Move, whose interrupt then steps each motor to its goal." width="774"></p>
+<p align="center"><img src="diagrams/trajectory-cycle.svg" alt="Every cycle at 100 Hz, StepitHardware reads the status of the motors from the Teensy through the DefaultDriver, gives the states to the trajectory controller, takes its position commands and sends them to the Teensy in a Move, whose interrupt then steps each motor to its goal." width="774"></p>
 
 Each cycle sends a new target, and AccelStepper plans from where the motor is to that target with its own acceleration and maximum speed: the controller never sends a velocity profile. The positions read back are the firmware's count of steps, not a measurement: the motors are open loop.
 
@@ -302,7 +303,9 @@ What has no automated test:
 
 **One `SystemInterface` for every motor.** The firmware answers for all its motors in one frame, so one read and one write a cycle cover the robot. A component per joint would multiply the round trips over the same port.
 
-**The firmware plans each motion, the host only sends targets.** AccelStepper accelerates and brakes every motor at its configured acceleration, so a position goal sent at 30 Hz becomes a smooth move without the host computing a profile, and a goal that is never followed by another, after a crash, still ends at rest. The price is that the motors are not synchronised: each reaches its target on its own, and the trajectory controller's timing is only as good as their acceleration allows.
+**The firmware plans each motion, the host only sends targets.** AccelStepper accelerates and brakes every motor at its configured acceleration, so a position goal sent every cycle becomes a smooth move without the host computing a profile, and a goal that is never followed by another, after a crash, still ends at rest. The price is that the motors are not synchronised: each reaches its target on its own, and the trajectory controller's timing is only as good as their acceleration allows.
+
+**Two trajectory controllers.** On the `position` interfaces, `joint_trajectory_controller` sends a new target every cycle, and the motor runs at full speed toward it and plans to stop there: it chases the trajectory, which suits a move to a point but strays from a path. `velocity_trajectory_controller` sends the velocity of the trajectory plus a correction for the error instead, and the motor turns at that velocity until the next cycle. On a 7 s ellipse on the rig, the first trailed by up to 1,156 steps, the second by 3, as the simulation of the firmware predicted. The price is a faster loop, 100 Hz instead of 30 Hz, so twice as many round trips over the serial port per second, and a joint that hunts by one step at rest, since the correction never reaches zero: it is deactivated when the trajectory is done.
 
 **Velocity as an infinite target.** AccelStepper moves to positions; a velocity is a target far away at the requested speed, and a speed of 0 holds the motor where it is, rather than an infinite target at speed 0, which runs away as soon as something raises the speed, e.g. a configuration.
 

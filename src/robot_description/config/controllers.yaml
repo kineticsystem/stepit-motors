@@ -3,7 +3,13 @@
 
 controller_manager:
   ros__parameters:
-    update_rate: 30 # Hz
+    # Every cycle, read() asks the Teensy for the status of the motors and
+    # write() sends it the commands, each waiting for the answer. The velocity
+    # trajectory controller needs 100 Hz: at 30 Hz each velocity is held for
+    # 33 ms and the motors stray from the trajectory. Measured on a Raspberry
+    # Pi 5 with a Teensy 4.0 on 2026-11-10: a cycle takes 1.6 ms on average and
+    # 2.7 ms at most over a minute at 100 Hz, with no overruns.
+    update_rate: 100 # Hz
 
     velocity_controller:
       type: velocity_controllers/JointGroupVelocityController
@@ -12,6 +18,9 @@ controller_manager:
       type: position_controllers/JointGroupPositionController
 
     joint_trajectory_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+    velocity_trajectory_controller:
       type: joint_trajectory_controller/JointTrajectoryController
 
     joint_state_broadcaster:
@@ -70,6 +79,53 @@ joint_trajectory_controller:
 
     command_interfaces:
       - position
+
+    state_interfaces:
+      - position
+      - velocity
+
+# The trajectory controller on the velocity interfaces, for a path that must be
+# followed in time, e.g. a drawing or a camera move. Every cycle it sends each
+# joint the velocity of the trajectory (the feed-forward) plus p times how far
+# the joint is behind it, and the motor turns at that velocity until the next
+# cycle. On the position interfaces, the motors instead run at full speed to
+# each new target and plan to stop there, so they chase the trajectory: on a
+# 7 s ellipse on the rig it trailed by up to 1,156 steps, this one by 3.
+velocity_trajectory_controller:
+  ros__parameters:
+    allow_partial_joints_goal: true
+
+    # As joint_trajectory_controller: a new goal starts from the last command.
+    interpolate_from_desired_state: true
+
+    # ff_velocity_scale and p both default to 0, which would send velocity 0.
+    # p is in 1/s: an error dies away in about 1/p = 50 ms. Keep p times the
+    # cycle, 0.01 s, well below 1, or the joint overshoots and oscillates. At
+    # rest the joint hunts by one step, the error never reaching 0: deactivate
+    # the controller when the trajectory is done.
+    gains:
+      joint1: { p: 20.0, i: 0.0, d: 0.0, ff_velocity_scale: 1.0 }
+      joint2: { p: 20.0, i: 0.0, d: 0.0, ff_velocity_scale: 1.0 }
+      joint3: { p: 20.0, i: 0.0, d: 0.0, ff_velocity_scale: 1.0 }
+      joint4: { p: 20.0, i: 0.0, d: 0.0, ff_velocity_scale: 1.0 }
+      joint5: { p: 20.0, i: 0.0, d: 0.0, ff_velocity_scale: 1.0 }
+
+    constraints:
+      goal_time: 1.0
+      joint1: { goal: 0.01 }
+      joint2: { goal: 0.01 }
+      joint3: { goal: 0.01 }
+      joint4: { goal: 0.01 }
+      joint5: { goal: 0.01 }
+    joints:
+      - joint1
+      - joint2
+      - joint3
+      - joint4
+      - joint5
+
+    command_interfaces:
+      - velocity
 
     state_interfaces:
       - position
