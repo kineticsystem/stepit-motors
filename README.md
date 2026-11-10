@@ -317,7 +317,7 @@ ros2 topic pub -1 /joint_trajectory_controller/joint_trajectory trajectory_msgs/
 The trajectory is a list of waypoints, each of them containing the desired position and velocity of each joint at a given time.
 
 > [!IMPORTANT]
-> Only one controller must be active at a time: `velocity_controller`, `position_controller`, or `joint_trajectory_controller`.
+> Only one controller must be active at a time: `velocity_controller`, `position_controller`, `joint_trajectory_controller` or `velocity_trajectory_controller`.
 
 To use the velocity controller, deactivate the current controller before activating another one:
 
@@ -346,6 +346,34 @@ ros2 control set_controller_state position_controller active -c /controller_mana
 ```
 ros2 topic pub -1 /position_controller/commands std_msgs/msg/Float64MultiArray "data: [6.28, 6.28, 6.28, 6.28, 6.28]"
 ```
+
+The controller `velocity_trajectory_controller` follows a trajectory like `joint_trajectory_controller`, but on the velocity interfaces, for a path that must be followed in time, e.g. a drawing or a camera move. Every cycle it sends each joint the velocity of the trajectory, plus a correction for how far the joint is behind it. `joint_trajectory_controller` sends positions instead, and the motors run at full speed to each one and plan to stop there, so they chase the trajectory rather than follow it: on a 7 s ellipse on the real rig, `joint_trajectory_controller` trailed by up to 1,156 motor steps, `velocity_trajectory_controller` by 3. It is also loaded but inactive. Deactivate any previous controller as per previous note:
+
+```
+ros2 control set_controller_state position_controller inactive -c /controller_manager
+ros2 control set_controller_state velocity_trajectory_controller active -c /controller_manager
+```
+
+The positions of a trajectory are absolute, and the previous command left every joint at 6.28 rad. The following trajectory starts there and moves `joint1` forward and `joint2` backward together, by 1.5 turns each: they speed up for 1 s, turn at half a turn per second for 2 s, and slow down for 1 s. Giving the velocity at each waypoint lets the controller send it to the motors as it is:
+
+```
+ros2 topic pub -1 /velocity_trajectory_controller/joint_trajectory trajectory_msgs/msg/JointTrajectory "{
+  joint_names: [joint1, joint2],
+  points: [
+    { positions: [7.85, 4.71], velocities: [3.14, -3.14], time_from_start: { sec: 1 } },
+    { positions: [14.14, -1.57], velocities: [3.14, -3.14], time_from_start: { sec: 3 } },
+    { positions: [15.71, -3.14], velocities: [0, 0], time_from_start: { sec: 4 } }
+  ]
+}"
+```
+
+At rest, the controller keeps correcting an error smaller than one step, and the joints hunt back and forth by one step. Deactivate it when the trajectory is done:
+
+```
+ros2 control set_controller_state velocity_trajectory_controller inactive -c /controller_manager
+```
+
+The controllers run at 100 Hz, the `update_rate` of [`controllers.yaml`](src/robot_description/config/controllers.yaml), which `velocity_trajectory_controller` needs: at 30 Hz each velocity is held for 33 ms and the motors stray from the trajectory. Every cycle, `read()` and `write()` each wait for an answer from the Teensy. On a Raspberry Pi 5 with a Teensy 4.0, the rig holds 100 Hz comfortably: a cycle takes 1.6 ms on average and 2.7 ms at most over a minute, with no overruns.
 
 ## How to run GitHub Actions locally
 

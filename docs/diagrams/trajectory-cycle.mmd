@@ -51,7 +51,7 @@ sequenceDiagram
     participant HW as StepitHardware
     participant Drv as DefaultDriver
     participant MCU as Teensy firmware
-    loop every cycle, 30 Hz
+    loop every cycle, 100 Hz
         HW->>Drv: read(): get_status()
         Drv->>MCU: Status 0x75
         MCU-->>Drv: 0x11, 5 x id, position,<br/>velocity, distance
