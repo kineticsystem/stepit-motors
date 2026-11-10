@@ -1,6 +1,6 @@
 # Velocity Trajectory Controller
 
-Branch `velocity-trajectory-controller`.
+Pull request [#27](https://github.com/kineticsystem/stepit-motors/pull/27), branch `velocity-trajectory-controller`.
 
 ## Goal
 
