@@ -9,6 +9,7 @@ Each pull request has a notes file here. It keeps what the pull request does not
 | [025-teensy-40-and-41.md](025-teensy-40-and-41.md) | [#25](https://github.com/kineticsystem/stepit-motors/pull/25) The Teensy 4.0 and the Teensy 4.1 |
 | [026-inverted-joints.md](026-inverted-joints.md) | [#26](https://github.com/kineticsystem/stepit-motors/pull/26) Inverted joints |
 | [027-velocity-trajectory-controller.md](027-velocity-trajectory-controller.md) | [#27](https://github.com/kineticsystem/stepit-motors/pull/27) Velocity trajectory controller |
+| [028-ros2-workspace.md](028-ros2-workspace.md) | [#28](https://github.com/kineticsystem/stepit-motors/pull/28) Libraries from `stepit.repos`, not submodules |
 
 ## How to Write One
 
