@@ -1,6 +1,6 @@
 # Libraries from `stepit.repos`, Not Submodules
 
-Branch `ros2-workspace`.
+Pull request [#28](https://github.com/kineticsystem/stepit-motors/pull/28), branch `ros2-workspace`.
 
 ## Goal
 
