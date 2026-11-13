@@ -141,24 +141,13 @@ The microcontroller is usually shown as `/dev/ttyACM0`. To drive it instead of t
 
 ### Chekout the Git Repository
 
-Check out this git repository, including all required submodules.
+Check out this git repository:
 
 ```
-git clone --recurse-submodules git@github.com:kineticsystem/stepit-motors.git
+git clone git@github.com:kineticsystem/stepit-motors.git
 ```
 
-If you missed the switch `--recurse-submodules`, you can clone all dependencies with the following commands:
-
-```
-cd stepit-motors
-git submodule update --init --recursive
-```
-
-Remember to enable recursion for relevant git commands, such that regular commands recurse into submodules by default.
-
-```
-git config --global submodule.recurse true
-```
+The packages build on two libraries, `serial` and `framed-serial`, which are not part of the repository: [`stepit.repos`](stepit.repos) lists them, each at the commit StepIt Motors is built and tested with. `bin/update.sh`, `update` in the container, imports them with `vcs` into `modules`, a folder git ignores, before it installs the dependencies with rosdep: run it before the first build. Run it again after a change to `stepit.repos`: each library moves to its new commit, and keeps any local change.
 
 ### Pre-Commit Hooks
 

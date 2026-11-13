@@ -56,7 +56,7 @@ xacro to configure a robot: StepIt Macro sets them as launch arguments.
 How it is built, and why, is in [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md). The project is a ROS 2 workspace with two top-level directories:
 
 - **`src/`** — ROS 2 packages (ament/colcon)
-- **`modules/`** — git submodules (non-ROS C++ libraries)
+- **`modules/`** — the libraries of `stepit.repos`, imported by `bin/update.sh` with `vcs`; git ignores the folder
 
 ### ROS 2 Packages (`src/`)
 
@@ -70,10 +70,12 @@ How it is built, and why, is in [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md).
 | `stepit_hardware_tests` | Integration tests requiring real hardware |
 | `stepit_mcu` | PlatformIO project for Teensy firmware (not built by colcon): one build per board, `teensy40` (the default) and `teensy41`, the same code and pins |
 
-### Submodules (`modules/`)
+### Libraries (`modules/`)
+
+Not part of the repository: `stepit.repos` pins each to a commit, `bin/update.sh` imports them into `modules/`, and industrial_ci into its upstream workspace. A new library goes into `stepit.repos`, never in a git submodule.
 
 - **`serial`** — Low-level cross-platform serial port C++ library (wjwwood/serial)
-- **`framed-serial`** — the `framed_serial` ROS 2 package: framed, CRC-checked messages over the serial port, shared with StepIt Freezer ([kineticsystem/framed-serial](https://github.com/kineticsystem/framed-serial)). CI fetches both submodules through `stepit.repos`, since its checkout does not recurse into submodules: add a new submodule there too.
+- **`framed-serial`** — the `framed_serial` ROS 2 package: framed, CRC-checked messages over the serial port, shared with StepIt Freezer ([kineticsystem/framed-serial](https://github.com/kineticsystem/framed-serial)).
 
 ### Key Design Pattern: `stepit_hardware` / `stepit_driver`
 
@@ -90,7 +92,7 @@ The `StepitHardware` reads joint configuration (motor IDs, max velocity, acceler
 ### Communication Stack (real hardware)
 
 ```
-StepitHardware → DefaultDriver → FramedSerial (framed-serial submodule) → serial (submodule) → USB/serial → Teensy
+StepitHardware → DefaultDriver → FramedSerial (framed-serial library) → serial (library) → USB/serial → Teensy
 ```
 
 Frames are delimited by `0x7E`, `0x7E`/`0x7D` in the data are escaped with `0x7D` and XOR `0x20`, and each frame ends with a CRC-16/KERMIT. The protocol carries typed request/response messages defined in `stepit_driver/msgs/`.
@@ -114,7 +116,7 @@ For the `architect` and `reviewer` skills: what they cannot find out alone.
 - Its shape is the newest `docs/ARCHITECTURE.md` of the other StepIt modules, StepIt Freezer's when it was written: Introduction, The Big Picture (with a table of the hardware interface, `/motors/status` and the launch arguments), The Packages, the parts (the hardware interface, the drivers, the protocol over the serial port, the firmware in `stepit_mcu`), Tests, How to Extend the Driver, Design Decisions and Trade-offs. It is linked from the README and from [Architecture](#architecture).
 - Diagrams follow the `beautiful-mermaid-diagrams` skill. Each is an image: its source is `docs/diagrams/<name>.mmd`, rendered by `bin/render-diagrams.sh` into an SVG beside it, outside the container (it needs Node.js and Chrome); commit both. `bin/check-diagrams.sh`, run by `bin/test.sh` and CI, fails when an SVG is older than its source.
 - **The review is a separate document, `docs/Review.md`**, opened with the date and the commit reviewed; `docs/ARCHITECTURE.md` describes the design and holds no review. Say whether an implementation issue is a safety issue for the motors, e.g. a move that does not stop.
-- Easy to break, and the first things to check: `read()` and `write()` run in the realtime loop and never publish or block; `/motors/status` keeps its name; the launch arguments, not the xacro, configure a robot. `serial` and `framed-serial` in `modules/` are shared code: `framed-serial` is also in StepIt Freezer, at a commit that must match; do not review `serial`, which is third-party.
+- Easy to break, and the first things to check: `read()` and `write()` run in the realtime loop and never publish or block; `/motors/status` keeps its name; the launch arguments, not the xacro, configure a robot. `serial` and `framed-serial` in `modules/` are shared code: `framed-serial` is also in StepIt Freezer, and StepIt Macro fails to build when the two `.repos` files pin different commits; do not review `serial`, which is third-party.
 - **Probes**: a throwaway test is a gmock test in `src/stepit_driver/tests/` or `src/stepit_hardware/tests/`, with the mocks and fakes there, added with `ament_add_gmock()` to the `tests/CMakeLists.txt` of the package, and run with `colcon test --packages-select <package> --return-code-on-test-failure`. Never `stepit_hardware_tests`, which needs the real controller.
 
 ## Code Standards

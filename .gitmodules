@@ -1,9 +1,0 @@
-[submodule "modules/serial"]
-	path = modules/serial
-	url = git@github.com:kineticsystem/serial.git
-[modules "serial"]
-	branch = ros2
-[submodule "modules/framed-serial"]
-	path = modules/framed-serial
-	url = git@github.com:kineticsystem/framed-serial.git
-	branch = main
