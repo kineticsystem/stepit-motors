@@ -13,3 +13,6 @@ venv
 .idea
 *.egg-info
 __pycache__
+
+# The libraries of stepit.repos, which bin/update.sh imports with vcs.
+/modules/

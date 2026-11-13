@@ -71,7 +71,7 @@ The interface of the module:
 | `robot_bringup` | `launch.py`, which includes `robot.launch.py`. | | |
 | `stepit_hardware_tests` | `get_info` and `get_status`, programs that ask a real Teensy, for checking a board by hand. | `stepit_driver`, `framed_serial` | Run in CI: they need the board. |
 | `stepit_mcu` | The firmware, a PlatformIO project with a build for the Teensy 4.0 and one for the 4.1, not built by colcon. | AccelStepper, Teensyduino | |
-| `serial`, `framed-serial` | The serial port and the framed protocol, submodules in `modules`, fetched by CI through `stepit.repos`. `framed-serial` is shared with StepIt Freezer, at the same commit. | | |
+| `serial`, `framed-serial` | The serial port and the framed protocol, pinned in `stepit.repos` and imported into `modules` by `bin/update.sh`, and by CI. `framed-serial` is shared with StepIt Freezer, at the same commit. | | |
 
 The includes follow the table:
 

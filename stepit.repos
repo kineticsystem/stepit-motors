@@ -1,9 +1,13 @@
+# The libraries the packages of src/ build on, at the commits they are built and
+# tested with. bin/update.sh imports them into modules/, and industrial_ci into
+# its upstream workspace. A rig that builds StepIt Motors with other modules
+# lists the libraries once, in its own .repos file, at the same commits.
 repositories:
   serial:
     type: git
     url: https://github.com/kineticsystem/serial.git
-    version: ros2
+    version: d8d160678aa0b31cdf467c052b954fa287cc6cdf
   framed-serial:
     type: git
     url: https://github.com/kineticsystem/framed-serial.git
-    version: main
+    version: d386c91ae9499d55daef3413dd585eec66c6fc2d

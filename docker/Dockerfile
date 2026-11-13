@@ -36,6 +36,7 @@ RUN apt-get -y install python3
 RUN apt-get -y install python-is-python3
 RUN apt-get install -y --no-install-recommends ros-jazzy-rmw-cyclonedds-cpp
 RUN apt-get install -y python3-colcon-common-extensions
+RUN apt-get install -y python3-vcstool
 RUN apt-get install -y pre-commit
 
 # The container user is in the sudo group, but a password prompt makes the
