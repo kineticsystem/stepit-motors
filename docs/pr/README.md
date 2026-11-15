@@ -11,7 +11,7 @@ Each pull request has a notes file here. It keeps what the pull request does not
 | [027-velocity-trajectory-controller.md](027-velocity-trajectory-controller.md) | [#27](https://github.com/kineticsystem/stepit-motors/pull/27) Velocity trajectory controller |
 | [028-ros2-workspace.md](028-ros2-workspace.md) | [#28](https://github.com/kineticsystem/stepit-motors/pull/28) Libraries from `stepit.repos`, not submodules |
 | [029-architecture-review.md](029-architecture-review.md) | [#29](https://github.com/kineticsystem/stepit-motors/pull/29) A second check of the architecture, and a review |
-| [readme-fixes.md](readme-fixes.md) | The README files, checked against the code |
+| [030-readme-fixes.md](030-readme-fixes.md) | [#30](https://github.com/kineticsystem/stepit-motors/pull/30) The README files, checked against the code |
 
 ## How to Write One
 
