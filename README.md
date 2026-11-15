@@ -14,7 +14,7 @@
   - [Cooling the Drivers](#cooling-the-drivers)
 - [Install StepIt Motors on the Microcontroller](#install-stepit-motors-on-the-microcontroller)
 - [Install StepIt Motors on the Local Computer](#install-stepit-motors-on-the-local-computer)
-  - [Chekout the Git Repository](#chekout-the-git-repository)
+  - [Check out the Git Repository](#check-out-the-git-repository)
   - [Pre-Commit Hooks](#pre-commit-hooks)
   - [Build the Project](#build-the-project)
 - [Running the Application](#running-the-application)
@@ -22,7 +22,7 @@
 
 ## Introduction
 
-StepIt Motors is a project to control stepper motors with a Teensy 4.0 or Teensy 4.1 microcontroller and ROS2. Watch [this video](https://github.com/user-attachments/assets/e67d46ce-e133-4e34-bab8-7d924be3dee4)
+StepIt Motors is a project to control stepper motors with a Teensy 4.0 or Teensy 4.1 microcontroller and ROS2. Watch [this video](https://github.com/user-attachments/assets/e67d46ce-e133-4e34-bab8-7d924be3dee4).
 
 How StepIt Motors is built, and why, is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The other documents, on the hardware and the design of the changes, are listed in [docs/README.md](docs/README.md).
 
@@ -32,12 +32,12 @@ To run StepIt Motors, we need a computer with Ubuntu 24.04. The preferred way to
 
 If you want to run StepIt Motors on your host machine, you must install ROS2. Please refer to the document [Install ROS2 Jazzy on Ubuntu](https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html).
 
-By default, StepIt Motors runs in simulation mode so we do not an need actual hardware to play around with it.
+By default, StepIt Motors runs in simulation mode so we do not need actual hardware to play around with it.
 
-For a real application, we attach the stepper motors to a Teensy 4.0 or a Teensy 4.1. Both work the same: the firmware has a build for each, and drives the same pins, 0 to 15, which sit at the same places on the two boards. The Teensy 4.1 is longer and adds pins, an SD card slot and Ethernet, which StepIt Motors does not use. We can hook the motors in many different ways but we suggest the following hardware configuration.
+For a real application, we attach the stepper motors to a Teensy 4.0 or a Teensy 4.1. Both work the same: the firmware has a build for each, and drives the same pins, 0 to 11 and 13 to 15, which sit at the same places on the two boards. The Teensy 4.1 is longer and adds pins, an SD card slot and Ethernet, which StepIt Motors does not use. We can hook the motors in many different ways but we suggest the following hardware configuration.
 
 - 1 x [Teensy 4.0](https://www.pjrc.com/store/teensy40.html) or [Teensy 4.1](https://www.pjrc.com/store/teensy41.html).
-- 1 x [PiBot multi-stepper motor driver board rev2.3 ](https://www.pibot.com/pibot-multi-stepper-motor-driver-board-rev2-3.html)
+- 1 x [PiBot multi-stepper motor driver board rev2.3](https://www.pibot.com/pibot-multi-stepper-motor-driver-board-rev2-3.html)
 - 5 x [TMC2208](https://shop.watterott.com/SilentStepStick-TMC2208-Stepper-Motor-Driver-with-soldered-pinheaders)
 - 5 x [SilentStepStick Protector](https://shop.watterott.com/SilentStepStick-Protector-for-Stepper-Motor-Drivers), one under each TMC2208: see [Protecting the Drivers](#protecting-the-drivers).
 - 5 x heatsinks for the TMC2208, small blue aluminium ones with thermal adhesive tape: see [Cooling the Drivers](#cooling-the-drivers).
@@ -89,9 +89,9 @@ The current of each motor is set by the potentiometer of its TMC2208: set it no 
 
 ## Install StepIt Motors on the Microcontroller
 
-This step is only required if you use a real hardware, otherwise skip to the following section.
+This step is only required if you use real hardware, otherwise skip to the following section.
 
-We developed code for the Teensy microcontroller using Visual Studio Code because it provides very good tools to format and validate the code. To achieve this goal, we must install [PlatformIO](https://platformio.org) extension which supports different microcontrollers including Arduino. Installing Arduino IDE is not required.
+We developed code for the Teensy microcontroller using Visual Studio Code because it provides very good tools to format and validate the code. To achieve this goal, we must install the [PlatformIO](https://platformio.org) extension which supports different microcontrollers including Arduino. Installing Arduino IDE is not required.
 
 If PlatformIO cannot find the Python interpreter, install the following:
 
@@ -139,7 +139,7 @@ The microcontroller is usually shown as `/dev/ttyACM0`. To drive it instead of t
 
 ## Install StepIt Motors on the Local Computer
 
-### Chekout the Git Repository
+### Check out the Git Repository
 
 Check out this git repository:
 
@@ -227,12 +227,12 @@ ros2 launch robot_bringup launch.py use_dummy:=false usb_port:=/dev/ttyACM0
 | `launch_rviz` | `false` | Start RViz. |
 | `use_dummy` | `true` | Use fake motors instead of the microcontroller. |
 | `usb_port` | `/dev/ttyACM0` | Serial port of the microcontroller. |
-| `baud_rate` | `9600` | Speed of the serial port, the one of the firmware. |
+| `baud_rate` | `9600` | Not read today: the serial port always opens at 9600 baud, the speed of the firmware. See finding 8 of [docs/Review.md](docs/Review.md). |
 | `inverted_joints` | | The joints whose motor turns the other way, separated by spaces, e.g. `joint1 joint2`: their positions and velocities change sign, in the commands and in the states. |
 
 All but `launch_rviz` are xacro arguments of [`stepit.urdf.xacro`](src/robot_description/urdf/stepit.urdf.xacro), which passes them to [`stepit.ros2_control.xacro`](src/robot_description/urdf/stepit.ros2_control.xacro): `inverted_joints` to the joints, the others to the `<hardware>`.
 
-The hardware, named `motors`, tells whether it talks to the controller on `/motors/status` (`stepit_motors_msgs/msg/MotorsStatus`): `connected`, the serial port, or `fake`, in `device`, and in `message` why it is not connected, e.g. the error of the serial port. ros2_control gives the hardware a node named after it, which publishes the status when it changes and every second, and keeps the last one for a client that subscribes late. When a read or a write fails, e.g. because the Teensy was unplugged, ros2_control deactivates the hardware, and it stays disconnected until `ros2_control_node` starts again:
+The hardware, named `motors`, tells whether it talks to the controller on `/motors/status` (`stepit_motors_msgs/msg/MotorsStatus`): `connected`, the serial port, or `fake`, in `device`, and in `message` why it is not connected, e.g. the error of the serial port. ros2_control gives the hardware a node named after it, which publishes the status when it changes and every second, and keeps the last one for a client that subscribes late. When a read or a write fails, e.g. because the Teensy was unplugged, ros2_control moves the hardware to `unconfigured`, and it stays disconnected until `ros2_control_node` starts again:
 
 ```
 ros2 topic echo /motors/status --qos-durability transient_local
@@ -280,7 +280,7 @@ ros2 topic pub -1 /joint_trajectory_controller/joint_trajectory trajectory_msgs/
       positions: [0, 0, 0, 0, 0],
       velocities: [0, 0, 0, 0, 0],
       time_from_start: {
-        sec: 12,
+        sec: 20,
         nanosec: 0
       }
     },
@@ -288,7 +288,7 @@ ros2 topic pub -1 /joint_trajectory_controller/joint_trajectory trajectory_msgs/
       positions: [-31.4159265358979,-37.6991118430775,-43.9822971502571,-50.2654824574367,-56.5486677646163],
       velocities: [0, 0, 0, 0, 0],
       time_from_start: {
-        sec: 17,
+        sec: 30,
         nanosec: 0
       }
     },
@@ -296,7 +296,7 @@ ros2 topic pub -1 /joint_trajectory_controller/joint_trajectory trajectory_msgs/
       positions: [0, 0, 0, 0, 0],
       velocities: [0, 0, 0, 0, 0],
       time_from_start: {
-        sec: 20,
+        sec: 40,
         nanosec: 0
       }
     },
@@ -315,7 +315,7 @@ ros2 control set_controller_state joint_trajectory_controller inactive -c /contr
 ros2 control set_controller_state velocity_controller active -c /controller_manager
 ```
 
-Then run the following commands:
+Then run the following command:
 
 ```
 ros2 topic pub -1 /velocity_controller/commands std_msgs/msg/Float64MultiArray "data: [6.28,-6.28,0,0,0]"
@@ -336,7 +336,7 @@ ros2 control set_controller_state position_controller active -c /controller_mana
 ros2 topic pub -1 /position_controller/commands std_msgs/msg/Float64MultiArray "data: [6.28, 6.28, 6.28, 6.28, 6.28]"
 ```
 
-The controller `velocity_trajectory_controller` follows a trajectory like `joint_trajectory_controller`, but on the velocity interfaces, for a path that must be followed in time, e.g. a drawing or a camera move. Every cycle it sends each joint the velocity of the trajectory, plus a correction for how far the joint is behind it. `joint_trajectory_controller` sends positions instead, and the motors run at full speed to each one and plan to stop there, so they chase the trajectory rather than follow it: on a 7 s ellipse on the real rig, `joint_trajectory_controller` trailed by up to 1,156 motor steps, `velocity_trajectory_controller` by 3. It is also loaded but inactive. Deactivate any previous controller as per previous note:
+The controller `velocity_trajectory_controller` follows a trajectory like `joint_trajectory_controller`, but on the velocity interfaces, for a path that must be followed in time, e.g. a drawing or a camera move. Every cycle it sends each joint the velocity of the trajectory, plus a correction for how far the joint is behind it. `joint_trajectory_controller` sends positions instead, and the motors run at full speed to each one and plan to stop there, so they chase the trajectory rather than follow it: on a 7 s ellipse on the real rig, `joint_trajectory_controller`, at 30 Hz, trailed by up to 1,156 motor steps, `velocity_trajectory_controller`, at 100 Hz, by 3. It is also loaded but inactive. Deactivate any previous controller as per previous note:
 
 ```
 ros2 control set_controller_state position_controller inactive -c /controller_manager
@@ -362,7 +362,7 @@ At rest, the controller keeps correcting an error smaller than one step, and the
 ros2 control set_controller_state velocity_trajectory_controller inactive -c /controller_manager
 ```
 
-The controllers run at 100 Hz, the `update_rate` of [`controllers.yaml`](src/robot_description/config/controllers.yaml), which `velocity_trajectory_controller` needs: at 30 Hz each velocity is held for 33 ms and the motors stray from the trajectory. Every cycle, `read()` and `write()` each wait for an answer from the Teensy. On a Raspberry Pi 5 with a Teensy 4.0, the rig holds 100 Hz comfortably: a cycle takes 1.6 ms on average and 2.7 ms at most over a minute, with no overruns.
+The controllers run at 100 Hz, the `update_rate` of [`controllers.yaml`](src/robot_description/config/controllers.yaml), which `velocity_trajectory_controller` needs: at 30 Hz each velocity is held for 33 ms and the motors stray from the trajectory. Every cycle, `read()` waits for an answer from the Teensy, and `write()` for one more for each command it sends. On a Raspberry Pi 5 with a Teensy 4.0, the rig holds 100 Hz comfortably: a cycle takes 1.6 ms on average and 2.7 ms at most over a minute, with no overruns.
 
 ## How to run GitHub Actions locally
 

@@ -10,7 +10,7 @@ For the material, we must use four nodes:
 
 1. a Texture Coordinate node;
 2. a Texture node;
-3. a principled BSDF node;
+3. a Principled BSDF node;
 4. a Material Output node.
 
 The Texture Coordinate node "UV" output must be connected to the Texture node "Vector" input.

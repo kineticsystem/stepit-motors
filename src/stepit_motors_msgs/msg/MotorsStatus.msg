@@ -6,8 +6,8 @@
 builtin_interfaces/Time stamp
 
 # True while the controller answers: from a successful handshake until a read
-# or a write fails. ros2_control then deactivates the hardware, which stays
-# disconnected until ros2_control_node starts again.
+# or a write fails. ros2_control then moves the hardware to unconfigured, and
+# it stays disconnected until ros2_control_node starts again.
 bool connected
 
 # The serial port of the controller, e.g. /dev/ttyACM0, or "fake" for the
