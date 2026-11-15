@@ -1,6 +1,6 @@
 # A Second Check of the Architecture, and a Review
 
-Branch `architecture-review`.
+Pull request [#29](https://github.com/kineticsystem/stepit-motors/pull/29), branch `architecture-review`.
 
 ## Goal
 
