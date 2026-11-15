@@ -11,10 +11,11 @@ Each pull request has a notes file here. It keeps what the pull request does not
 | [027-velocity-trajectory-controller.md](027-velocity-trajectory-controller.md) | [#27](https://github.com/kineticsystem/stepit-motors/pull/27) Velocity trajectory controller |
 | [028-ros2-workspace.md](028-ros2-workspace.md) | [#28](https://github.com/kineticsystem/stepit-motors/pull/28) Libraries from `stepit.repos`, not submodules |
 | [029-architecture-review.md](029-architecture-review.md) | [#29](https://github.com/kineticsystem/stepit-motors/pull/29) A second check of the architecture, and a review |
+| [readme-fixes.md](readme-fixes.md) | The README files, checked against the code |
 
 ## How to Write One
 
 - One file per pull request: `<number>-<branch>.md`, e.g. `025-teensy-40-and-41.md`. Before it has a number, use the branch name.
-- Sections: **Goal**, **Decisions**, **Left Out**, **Open Items**. Skip the ones that do not apply.
+- Sections: **Goal**, **Decisions**, **Left Out**, **Open Items**, **Tested**. Skip the ones that do not apply.
 - Short sentences. One idea per paragraph. A diagram when it explains faster.
 - Write it while the branch is open. Do not rewrite it after the merge.

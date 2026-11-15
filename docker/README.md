@@ -22,11 +22,12 @@ that supplies the container name, the host uid/gid and the X server permission,
 then calls `docker compose`. You can drive compose directly if you prefer, but
 the wrapper is easier.
 
-Run this script to create an image and a container. It always mounts the repo it
-is part of, so it can be called from anywhere:
+Run this script to create an image and a container, with the name we give the
+container, e.g. `stepit-motors`, as `<container-name>`. It always mounts the repo
+it is part of, so it can be called from anywhere:
 
 ```bash
-./docker/dock.sh [container-name] build
+./docker/dock.sh <container-name> build
 ```
 
 This is also how you pick up changes to the `Dockerfile`: it rebuilds only the
@@ -35,19 +36,19 @@ layers that changed, so there is no need to `clean` first.
 Run this to start the container with an interactive shell:
 
 ```bash
-./docker/dock.sh [container-name] start
+./docker/dock.sh <container-name> start
 ```
 
 Run this to stop the container:
 
 ```bash
-./docker/dock.sh [container-name] stop
+./docker/dock.sh <container-name> stop
 ```
 
-Finally, run this to remove container and image:
+Finally, run this to remove the container and the image:
 
 ```bash
-./docker/dock.sh [container-name] clean
+./docker/dock.sh <container-name> clean
 ```
 
 ## Working with the code
@@ -57,13 +58,13 @@ Inside the container, the repo is bind-mounted at `~/ws`. `~/ws/bin` is on the
 directory (they always act on the workspace root):
 
 ```bash
-update    # only once: rosdep install
+update    # before the first build, and after a change to stepit.repos: vcs import, rosdep install
 build
 test
 ```
 
 Outside the container, or from a non-interactive shell inside it (e.g.
-`docker exec [container-name] build.sh`), call the scripts by their full names:
+`docker exec <container-name> build.sh`), call the scripts by their full names:
 `./bin/update.sh`, `./bin/build.sh`, `./bin/test.sh`.
 
 The interactive shell setup -- sourcing the ROS2 environment and defining those

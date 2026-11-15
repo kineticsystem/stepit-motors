@@ -1,13 +1,14 @@
 # The Documents of StepIt Motors
 
-How to build, run and test StepIt Motors is in the [README](../README.md); how it is built, and why, in [ARCHITECTURE.md](ARCHITECTURE.md). This folder holds everything else, one folder per topic.
+How to build, run and test StepIt Motors is in the [README](../README.md); how it is built, and why, in [ARCHITECTURE.md](ARCHITECTURE.md), and its review in [Review.md](Review.md). This folder holds everything else, one folder per topic.
 
 | Folder | What it holds |
 |---|---|
-| [`hardware`](hardware/README.md) | The datasheets and pictures of the Teensy 4.0 and 4.1, the PiBot board, the TMC2208 drivers and their protectors. |
+| [`hardware`](hardware/README.md) | The manual and the drawing of the PiBot board, and photos of the Teensy 4.0 and 4.1, the TMC2208 drivers and their protectors. |
 | [`design`](design) | Design notes of the changes, one per change, named after its date. |
 | [`pr`](pr/README.md) | The notes of the pull requests: what we discussed, what we chose, and why. |
 | [`background`](background) | Reading on stepper motors. |
+| [`diagrams`](diagrams) | The diagrams of the architecture document: each Mermaid source and its SVG. |
 | [`images`](images) | The logo. |
 
 ## Design Notes
