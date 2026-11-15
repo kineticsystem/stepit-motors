@@ -46,6 +46,7 @@ config:
     .labelBkg { background: transparent !important; fill: none !important; }
 ---
 flowchart TB
+    Bringup[("<b>robot_bringup</b>")]
     Tests("<b>stepit_hardware_tests</b>")
     Hardware{{"<b>stepit_hardware</b>"}}
     Description[("<b>robot_description</b>")]
@@ -63,6 +64,9 @@ flowchart TB
     Framed --> Serial
     Description -- "package.xml" --> Driver
     Tests --> Driver
+    Tests --> Framed
+    Description -. "plugin name" .-> Hardware
+    Bringup -. "launch file" .-> Description
 
     classDef human fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337
     classDef voice fill:#ccfbf1,stroke:#0d9488,stroke-width:2px,color:#134e4a
@@ -74,9 +78,9 @@ flowchart TB
 
     class Tests ext
     class Hardware brain
-    class Description data
+    class Description,Bringup data
     class Driver,Msgs mind
     class HI,Framed,Serial voice
 
-    linkStyle 0,1,2,3,4,5,7 stroke:#8b5cf6,stroke-width:2px
-    linkStyle 6 stroke:#3b82f6,stroke-width:2px
+    linkStyle 0,1,2,3,4,5,7,8 stroke:#8b5cf6,stroke-width:2px
+    linkStyle 6,9,10 stroke:#3b82f6,stroke-width:2px

@@ -10,6 +10,7 @@ Each pull request has a notes file here. It keeps what the pull request does not
 | [026-inverted-joints.md](026-inverted-joints.md) | [#26](https://github.com/kineticsystem/stepit-motors/pull/26) Inverted joints |
 | [027-velocity-trajectory-controller.md](027-velocity-trajectory-controller.md) | [#27](https://github.com/kineticsystem/stepit-motors/pull/27) Velocity trajectory controller |
 | [028-ros2-workspace.md](028-ros2-workspace.md) | [#28](https://github.com/kineticsystem/stepit-motors/pull/28) Libraries from `stepit.repos`, not submodules |
+| [architecture-review.md](architecture-review.md) | A Second Check of the Architecture, and a Review |
 
 ## How to Write One
 

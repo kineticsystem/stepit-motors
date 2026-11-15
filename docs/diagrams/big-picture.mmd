@@ -50,7 +50,7 @@ flowchart TB
 
     subgraph Node["#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;ROS2_CONTROL_NODE"]
         Controllers("<b>Controllers</b><br/>position, velocity,<br/>trajectory, joint states")
-        Hardware{{"<b>StepitHardware</b><br/>plugin, 30 Hz"}}
+        Hardware{{"<b>StepitHardware</b><br/>plugin, 100 Hz"}}
         Driver("<b>Driver</b>")
         Default("<b>DefaultDriver</b>")
         Fake("<b>FakeDriver</b><br/>5 FakeMotor")
@@ -64,8 +64,7 @@ flowchart TB
     Motors("<b>Stepper motors</b>")
 
     Clients == "commands, trajectories" ==> Controllers
-    Controllers -- "command interfaces" --> Hardware
-    Hardware -- "state interfaces" --> Controllers
+    Controllers <-- "commands down,<br/>states up" --> Hardware
     Hardware --> Driver
     Driver --> Default
     Driver --> Fake
@@ -93,7 +92,7 @@ flowchart TB
     style Board fill:#f59e0b12,stroke:#f59e0b,stroke-width:1.5px,stroke-dasharray:6 5,color:#d97706
 
     linkStyle 0 stroke:#f43f5e,stroke-width:3px
-    linkStyle 1,2,3,4,5 stroke:#8b5cf6,stroke-width:2px
-    linkStyle 6 stroke:#f43f5e,stroke-width:2px
-    linkStyle 7 stroke:#14b8a6,stroke-width:3px
-    linkStyle 8,9 stroke:#f59e0b,stroke-width:2px
+    linkStyle 1,2,3,4 stroke:#8b5cf6,stroke-width:2px
+    linkStyle 5 stroke:#f43f5e,stroke-width:2px
+    linkStyle 6 stroke:#14b8a6,stroke-width:3px
+    linkStyle 7,8 stroke:#f59e0b,stroke-width:2px

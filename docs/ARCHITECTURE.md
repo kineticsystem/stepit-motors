@@ -22,6 +22,7 @@
   - [Position and Velocity Goals](#position-and-velocity-goals)
   - [What the Firmware Rejects](#what-the-firmware-rejects)
 - [A Move from a Controller](#a-move-from-a-controller)
+- [Threads](#threads)
 - [Safety Nets](#safety-nets)
 - [Tests](#tests)
 - [How to Extend the Driver](#how-to-extend-the-driver)
@@ -38,7 +39,7 @@ It follows one idea: **`StepitHardware` talks to the motors only through the `Dr
 The robot is up to five stepper motors, each driven by a TMC2208 on a PiBot board, whose step, direction and enable pins a Teensy 4.0 or 4.1 drives. The Teensy runs [AccelStepper](https://www.airspayce.com/mikem/arduino/AccelStepper/) on a timer interrupt and answers the host over USB. On the host, `ros2_control_node` loads `StepitHardware` as a plugin, and the controllers write the joints' commands into it.
 
 <!-- The source is diagrams/big-picture.mmd: change it, then run bin/render-diagrams.sh. -->
-<p align="center"><img src="diagrams/big-picture.svg" alt="Clients send commands and trajectories to the controllers of ros2_control_node, which reach StepitHardware through the command and state interfaces; StepitHardware publishes /motors/status and talks through the Driver interface to the DefaultDriver or the FakeDriver; the DefaultDriver talks over USB serial to the Teensy, which drives the PiBot board and the stepper motors." width="518"></p>
+<p align="center"><img src="diagrams/big-picture.svg" alt="Clients send commands and trajectories to the controllers of ros2_control_node, which reach StepitHardware through the command and state interfaces; StepitHardware publishes /motors/status and talks through the Driver interface to the DefaultDriver or the FakeDriver; the DefaultDriver talks over USB serial to the Teensy, which drives the PiBot board and the stepper motors." width="469"></p>
 
 The interface of the module:
 
@@ -52,33 +53,34 @@ The interface of the module:
 | `joint_trajectory_controller` | controller, active | Follows a `JointTrajectory` on the `position` interfaces. |
 | `velocity_trajectory_controller` | controller, inactive | Follows a `JointTrajectory` on the `velocity` interfaces, for a path that must be followed in time. |
 | `position_controller`, `velocity_controller` | controllers, inactive | Forward a `Float64MultiArray` of positions or velocities on `/<controller>/commands` once activated. |
+| `robot_state_publisher` | node | Publishes the URDF on `/robot_description` and, from `/joint_states`, the transforms on `/tf`. |
 | `use_dummy` | launch argument, `true` | The fake motors, or the Teensy on `usb_port`. |
 | `usb_port` | launch argument, `/dev/ttyACM0` | The serial port of the Teensy. |
 | `baud_rate` | launch argument, `9600` | Passed to the hardware as `baud_rate`, which the serial factory does not read: see [DefaultDriver](#defaultdriver). |
 | `inverted_joints` | launch argument, empty | The joints whose motor turns the other way, separated by spaces, e.g. `joint1 joint2`. |
 | `launch_rviz` | launch argument, `false` | Starts RViz once the joint state broadcaster runs. |
 
-[`robot.launch.py`](../src/robot_description/launch/robot.launch.py) passes `use_dummy`, `usb_port` and `baud_rate` to xacro, which writes them as the `<param>` of the `<hardware>` in [`stepit.ros2_control.xacro`](../src/robot_description/urdf/stepit.ros2_control.xacro), and `inverted_joints` as the `<param name="inverted">` of each joint, `True` or `False`; it refuses a name the robot has no joint of: a robot is configured by the launch arguments, never by editing the xacro. StepIt Macro sets them in the section `robot` of its `rig.yaml`, and shows `/motors/status` as an icon of its page, which is why the hardware must keep the name `motors`.
+[`robot.launch.py`](../src/robot_description/launch/robot.launch.py) passes `use_dummy`, `usb_port` and `baud_rate` to xacro, which writes them as the `<param>` of the `<hardware>` in [`stepit.ros2_control.xacro`](../src/robot_description/urdf/stepit.ros2_control.xacro), and `inverted_joints` as the `<param name="inverted">` of each joint, `True` or `False`; it refuses a name the robot has no joint of: a robot is configured by the launch arguments, never by editing the xacro. StepIt Macro starts the module with [`launch.py`](../src/robot_bringup/launch/launch.py) of `robot_bringup`, which includes `robot.launch.py` and so takes the same arguments, sets them in the section `robot` of its `rig.yaml`, and shows `/motors/status` as an icon of its page, which is why the hardware must keep the name `motors`.
 
 ## The Packages
 
 | Package | Owns | Depends on | Must never |
 |---|---|---|---|
 | `stepit_motors_msgs` | `MotorsStatus`, the message of `/motors/status`. No code. | ROS | |
-| `stepit_driver` | The `Driver` interface, `DefaultDriver`, `FakeDriver` and `FakeMotor`, the messages of the protocol, the factories, and the limits of the controller in `hardware_limits.hpp`. | `framed_serial`, `hardware_interface` for `HardwareInfo` | Know about joints, controllers or lifecycle states. |
-| `stepit_hardware` | `StepitHardware`, the plugin, and its status publisher. | `stepit_driver`, `stepit_motors_msgs` | Open a port, encode a frame, or tell the fake from the real driver by type. |
+| `stepit_driver` | The `Driver` interface, `DefaultDriver`, `FakeDriver` and `FakeMotor`, the messages of the protocol, the factories, and the limits of the controller in `hardware_limits.hpp`. | `framed_serial`, `hardware_interface` for `HardwareInfo`, `rclcpp` for `rclcpp::Time` and the log | Know about joints, controllers or lifecycle states. |
+| `stepit_hardware` | `StepitHardware`, the plugin, and its status publisher. | `stepit_driver`, `stepit_motors_msgs`, `hardware_interface`, `pluginlib`, `rclcpp` | Open a port, encode a frame, or tell the fake from the real driver by type. |
 | `robot_description` | The URDF of the sample robot, its `ros2_control` block, the controllers, RViz, and `robot.launch.py`. | the controllers, `stepit_driver` | Hold the configuration of one robot: the launch arguments do. |
-| `robot_bringup` | `launch.py`, which includes `robot.launch.py`. | | |
-| `stepit_hardware_tests` | `get_info` and `get_status`, programs that ask a real Teensy, for checking a board by hand. | `stepit_driver`, `framed_serial` | Run in CI: they need the board. |
+| `robot_bringup` | `launch.py`, which includes `robot.launch.py`: the launch file StepIt Macro starts. | `robot_description`, found by name when it starts; its `package.xml` names no package | |
+| `stepit_hardware_tests` | `get_info` and `get_status`, programs that ask a real Teensy, for checking a board by hand; `get_info` also compares what the board reports with `hardware_limits.hpp`, and fails when they differ. No test, despite its name. | `stepit_driver`, `framed_serial` | Run in CI: they need the board. |
 | `stepit_mcu` | The firmware, a PlatformIO project with a build for the Teensy 4.0 and one for the 4.1, not built by colcon. | AccelStepper, Teensyduino | |
 | `serial`, `framed-serial` | The serial port and the framed protocol, pinned in `stepit.repos` and imported into `modules` by `bin/update.sh`, and by CI. `framed-serial` is shared with StepIt Freezer, at the same commit. | | |
 
 The includes follow the table:
 
 <!-- The source is diagrams/packages.mmd: change it, then run bin/render-diagrams.sh. -->
-<p align="center"><img src="diagrams/packages.svg" alt="The packages and their includes: stepit_hardware on stepit_driver, stepit_motors_msgs and hardware_interface; stepit_driver on framed_serial, which uses serial, and on hardware_interface; robot_description and stepit_hardware_tests on stepit_driver." width="734"></p>
+<p align="center"><img src="diagrams/packages.svg" alt="The packages and their includes: stepit_hardware on stepit_driver, stepit_motors_msgs and hardware_interface; stepit_driver on framed_serial, which uses serial, and on hardware_interface; stepit_hardware_tests on stepit_driver and framed_serial; robot_description names stepit_driver in its package.xml and loads the plugin of stepit_hardware by name; robot_bringup includes the launch file of robot_description." width="686"></p>
 
-`robot_description` loads the plugin by name, `stepit_driver/StepitHardware`, which `stepit_hardware` exports in [`hardware_interface.xml`](../src/stepit_hardware/hardware_interface.xml); its `package.xml` names `stepit_driver`, not `stepit_hardware`. The plugin keeps the namespace `stepit_driver` of the package it came from.
+Two edges are not includes, and no build file declares them, so they are dotted. `robot_description` loads the plugin by name, `stepit_driver/StepitHardware`, which `stepit_hardware` exports in [`hardware_interface.xml`](../src/stepit_hardware/hardware_interface.xml); its `package.xml` names `stepit_driver`, not `stepit_hardware`, so building `robot_description` and what it depends on does not build the plugin. The plugin keeps the namespace `stepit_driver` of the package it came from. `robot_bringup` finds `robot_description` by name when it starts.
 
 ## The Hardware Interface
 
@@ -88,20 +90,22 @@ The includes follow the table:
 
 | Step | What it does |
 |---|---|
-| `on_init` | Reads `id`, `acceleration` and `max_velocity` of each joint, rejects an id outside `0` to `joints - 1`, a duplicate id, or more than 32 joints, and builds the map from a motor id to its joint. Creates the driver with the factory, and the status publisher and its timer if `ros2_control` gave the hardware a node. |
-| `on_configure` | `connect()`, the [handshake](#the-handshake-and-the-version); `get_info()`, and checks each joint against the limits the controller reports; `configure()` with every joint's acceleration and maximum velocity; `get_status()`, and checks that it reports exactly the configured motors. Any failure returns `FAILURE` and says why on `/motors/status`. |
+| `on_init` | Reads `id`, `acceleration`, `max_velocity` and `inverted` of each joint, rejects a joint that lacks one of the first three, an id outside `0` to `joints - 1`, a duplicate id, or more than 32 joints, and builds the map from a motor id to its joint. Creates the driver with the factory, and the status publisher and its timer if `ros2_control` gave the hardware a node. |
+| `on_configure` | `connect()`, the [handshake](#the-handshake-and-the-version); `get_info()`, and checks each joint against the limits the controller reports; `configure()` with every joint's acceleration and maximum velocity; `get_status()`, and checks that it reports exactly the configured motors. A check that fails returns `FAILURE`, and an exception, e.g. a port that does not open or a timeout, `ERROR`; both say why on `/motors/status`. |
 | `on_activate` | Nothing: the motors already hold where they are. |
 | `on_deactivate` | A velocity of 0 for every motor, so that each decelerates to rest. |
+
+There is no `on_cleanup`, `on_shutdown` or `on_error`, and nothing calls `Driver::disconnect()`: once opened, the port stays open as long as the plugin lives.
 
 The checks of `on_configure` turn what would be an opaque rejection by the firmware into a message that names the joint and the limit it exceeds, before any motion.
 
 ### Read and Write
 
-`ros2_control_node` calls `read()` and `write()` in its realtime loop, at the `update_rate` of [`controllers.yaml`](../src/robot_description/config/controllers.yaml), 100 Hz. Each makes at most one request and one response over the serial port, waiting at most the `timeout` of the hardware, 0.2 s. On a Raspberry Pi 5 with a Teensy 4.0, a cycle takes 1.6 ms on average and 2.7 ms at most, well within the 10 ms of a cycle. They never publish: a change of the connection goes through `set_status()`, which only records it.
+`ros2_control_node` calls `read()` and `write()` in its realtime loop, at the `update_rate` of [`controllers.yaml`](../src/robot_description/config/controllers.yaml), 100 Hz. `read()` makes one request and waits for its response; `write()` makes one, or none when nothing is commanded, and two in the one cycle where a released joint is stopped, with a Speed, while other joints get position goals, with a Move. The `timeout` of the hardware, 0.2 s, is for each byte of a response, not for the whole of it. On a Raspberry Pi 5 with a Teensy 4.0, a cycle takes 1.6 ms on average and 2.7 ms at most, well within the 10 ms of a cycle. They never publish: a change of the connection goes through `set_status()`, which only records it.
 
 - **`read()`** asks `get_status()` and copies each motor's position and velocity into the joint its id maps to, never trusting the id as an index. A status that does not report exactly the configured motors returns `ERROR`.
 - **`write()`** sends what the active controllers command. A joint is commanded only when its interface is claimed and its command is not NaN. Velocity takes precedence: when any joint is velocity controlled, no position goal is sent in that cycle. A joint released by its controller and commanded by nothing gets a velocity of 0, once.
-- **A failure** of either, a timeout, a bad CRC or a rejected command, returns `ERROR`, and `ros2_control` deactivates the hardware. It stays disconnected until `ros2_control_node` starts again.
+- **A failure** of either, a timeout, a bad CRC or a rejected command, returns `ERROR`, and `ros2_control` (4.48.1, measured) moves the hardware to `unconfigured`, without calling `on_deactivate()`. It stays disconnected until `ros2_control_node` starts again, since nothing closes the port and a second `on_configure()` cannot open it twice. Nothing more is sent to the controller, not even a stop: the firmware has already stopped the motors when it rejected the command, and its watchdog stops them otherwise, see [Safety Nets](#safety-nets).
 
 Every read also keeps the firmware's watchdog quiet, see [Safety Nets](#safety-nets).
 
@@ -136,13 +140,13 @@ Without an executor, e.g. in a test that calls `on_init()` directly, there is no
 
 The `time` is the time of the control loop: the real driver ignores it, the fake one moves its motors to it.
 
-`StepitHardware` gets its driver from a `DriverFactory`, given to its constructor. The plugin's default constructor uses `DefaultDriverFactory`, which returns a `FakeDriver` when the hardware parameter `use_dummy` is anything but `false`, and otherwise a `DefaultDriver` on a `framed_serial::DefaultFramedSerial`, built by `DefaultFramedSerialFactory` and `DefaultSerialFactory` from `usb_port` and `timeout`. Tests give a factory of mocks.
+`StepitHardware` gets its driver from a `DriverFactory`, given to its constructor. The plugin's default constructor uses `DefaultDriverFactory`, which returns a `FakeDriver` when the hardware parameter `use_dummy` is there and anything but `false`, and otherwise, also with no `use_dummy` at all, a `DefaultDriver` on a `framed_serial::DefaultFramedSerial`, built by `DefaultFramedSerialFactory` and `DefaultSerialFactory` from `usb_port` and `timeout`. Tests give a factory of mocks.
 
 ### DefaultDriver
 
-[`default_driver.cpp`](../src/stepit_driver/src/default_driver.cpp) encodes each command into a frame, sends it, reads the response and decodes it; `framed_serial` throws on a timeout or a bad CRC, and so does the driver on an info response it cannot read.
+[`default_driver.cpp`](../src/stepit_driver/src/default_driver.cpp) encodes each command into a frame, sends it, reads the response and decodes it; `framed_serial` throws on a timeout or a bad CRC, and so does the driver on an info response it cannot read. `framed_serial` writes a frame one byte at a time, each followed by a flush; the notes of [pull request 27](pr/027-velocity-trajectory-controller.md) put a cycle at 0.4 ms with one write per frame, against the 1.6 ms of today.
 
-`connect()` opens the port, then tries `get_info()` up to 5 times, 100 ms apart, and accepts the controller only if its name is `STEPIT` and its major version is 1. It then pins every motor where it is, with a position command built from a status query, so that a new session never resumes the goal the controller kept from the last one.
+`connect()` opens the port, then tries `get_info()` up to 5 times, 100 ms apart, and accepts the controller only if its name is `STEPIT` and its major version is 1; an answer with another name or version ends the tries at once. It then pins every motor where it is, with a position command built from a status query, so that a new session never resumes the goal the controller kept from the last one.
 
 `DefaultSerialFactory` reads the hardware parameters `usb_port`, default `/dev/ttyACM0`, `baudrate`, default 9600, and `timeout`, default 0.2 s. The xacro sets `baud_rate`, not `baudrate`, so the launch argument `baud_rate` never reaches the port, which always opens at 9600. It does no harm today: the firmware is fixed at 9600, and the Teensy's USB serial runs at the speed of USB whatever the rate.
 
@@ -151,16 +155,23 @@ The `time` is the time of the control loop: the real driver ignores it, the fake
 `FakeDriver` keeps a `FakeMotor` per configured motor and behaves like the firmware where it matters to a robot description:
 
 - **It enforces the controller's limits**, those of [`hardware_limits.hpp`](../src/stepit_driver/include/stepit_driver/hardware_limits.hpp): 5 motors, 4π rad/s², 6π rad/s, with the same tolerance, so that a description that activates in simulation activates on the board too.
-- **It validates a whole command before applying any of it**, and rejects a command naming an unknown motor, as the firmware does.
+- **It validates a whole configuration before applying any of it**, as the firmware does.
+- **It rejects a motion command naming a motor that was not configured.**
 - **It answers the handshake** with `STEPIT`, version 1.1.0, and the limits.
 
-`FakeMotor` computes, in closed form, where a motor with a given acceleration and maximum velocity is at a time, from where it was when it received its last goal: a trapezoidal profile to a position in `position_kinematics.cpp`, or a ramp to a velocity in `velocity_kinematics.cpp`. Nothing runs between two calls, so the fake motors move with the clock of the control loop, and a test moves them by passing a later time. Its distance to go is always 0.
+`FakeMotor` computes, in closed form, where a motor with a given acceleration and maximum velocity is at a time, from where it was when it received its last goal: a trapezoidal profile to a position in `position_kinematics.cpp`, or a ramp to a velocity in `velocity_kinematics.cpp`. Nothing runs between two calls, so the fake motors move with the clock of the control loop, and a test moves them by passing a later time.
+
+It differs from the firmware in three ways:
+
+- **Its status reports only the configured motors**, the firmware's all 5. A robot of fewer than 5 joints therefore configures on the fake motors and fails on the board, see [How to Extend the Driver](#how-to-extend-the-driver).
+- **A rejected motion command stops nothing**, and the goals before the unknown motor in the command are already applied; the firmware applies none and stops every motor.
+- **The distance to go is always 0.**
 
 The limits are kept twice, in `hardware_limits.hpp` and in the firmware's `main.cpp`, by hand: the simulation must run with no board attached.
 
 ## The Protocol
 
-The host and the Teensy speak the framed protocol of `framed_serial`: frames delimited by `0x7E`, with `0x7E` and `0x7D` in the data escaped as `0x7D` and the byte XOR `0x20`, ending with a CRC-16/KERMIT, at 9600 baud. The first byte of a request is the command id; the first byte of a response is `0x11` for success or `0x12` for an error. Numbers are 32-bit floats; positions are in radians, velocities in rad/s, accelerations in rad/s², converted by the firmware to steps, 3200 per turn: 200 full steps of 1.8° and 16 microsteps. It is strictly one request, one response: the firmware never speaks first.
+The host and the Teensy speak the framed protocol of `framed_serial`: frames delimited by `0x7E`, with `0x7E` and `0x7D` in the data escaped as `0x7D` and the byte XOR `0x20`, ending with a CRC-16/KERMIT, at 9600 baud. The first byte of a request is the command id; the first byte of a response is `0x11` for success or `0x12` for an error. Numbers are 32-bit floats, the most significant byte first; positions are in radians, velocities in rad/s, accelerations in rad/s², converted by the firmware to steps, 3200 per turn: 200 full steps of 1.8° and 16 microsteps. It is strictly one request, one response: the firmware never speaks first.
 
 ### Commands
 
@@ -174,7 +185,7 @@ The host and the Teensy speak the framed protocol of `framed_serial`: frames del
 | `0x79` | Echo | anything | `0x79` and the same bytes |
 | `0x7A` | Set motors enabled | 1 byte, 0 to stop the interrupt, any other value to start it | none |
 
-A command carries up to 5 motors; the status always reports all 5. The driver sends Move, Status, Info, Speed and Config; nothing on the host sends Echo or Set motors enabled, which are for testing by hand. A command id the firmware does not know gets no answer, and the host's read times out.
+A Move, a Speed or a Config carries 1 to 5 motors; the status always reports all 5. The driver sends Move, Status, Info, Speed and Config; nothing on the host sends Echo or Set motors enabled, which are for testing by hand. A command id the firmware does not know gets no answer, and the host's read times out.
 
 ### The Handshake and the Version
 
@@ -202,7 +213,7 @@ The firmware, in [`src/stepit_mcu`](../src/stepit_mcu), is Arduino code for a Te
 |---|---|
 | `main.cpp` | The pins, the limits, the commands, the interrupt and the watchdog. |
 | `MotorGoal`, `MotorState`, `MotorConfig`, `Guard` | The goal the main loop gives each motor, the state the interrupt reports, the configuration, and the flag that keeps the two apart. |
-| `SerialPort`, `DataBuffer`, `Buffer`, `CrcUtils` | The framed protocol, the firmware side of `framed_serial`, with 200-byte buffers. |
+| `SerialPort`, `DataBuffer`, `Buffer`, `CrcUtils` | The framed protocol, the firmware side of `framed_serial`, with 200-byte buffers. The firmware of StepIt Freezer has a copy of these files, kept in step by hand: its `SerialPort` has a `reset()` that this one lacks, and its `DataBuffer` takes an `int16_t` where this one takes an `int`. |
 
 `setup()` drives the enable pins high and leaves them so; whether high enables the TMC2208s is set by the `INV` jumper of the PiBot board, see its [manual](hardware/PiBotMDRB.pdf).
 
@@ -229,7 +240,7 @@ AccelStepper accelerates to a higher maximum speed but drops to a lower one at o
 
 The firmware checks a whole command before applying any of it:
 
-- **A payload whose length is not a whole number of entries**, or more than 5 entries.
+- **A payload that is empty, whose length is not a whole number of entries**, or with more than 5 entries.
 - **A motor id of 5 or more.**
 - **In Config**, an acceleration or a maximum velocity that is not positive, NaN, or above the limits, 6400 steps/s² and 9600 steps/s, 2 turns/s² and 3 turns/s, measured on our board, with a tolerance of 0.1 %.
 
@@ -244,14 +255,28 @@ The longest flow: the trajectory controller is active, a client sends it a goal,
 
 Each cycle sends a new target, and AccelStepper plans from where the motor is to that target with its own acceleration and maximum speed: the controller never sends a velocity profile. The positions read back are the firmware's count of steps, not a measurement: the motors are open loop.
 
+## Threads
+
+On the host, everything runs in `ros2_control_node`; on the Teensy, in the interrupt and the main loop.
+
+| Where | What runs there | How it meets the others |
+|---|---|---|
+| The realtime loop of `ros2_control_node`, 100 Hz | `read()`, the controllers, `write()`. `read()` and `write()` wait for the Teensy's answer. | Records a change of the connection with `set_status()`, under `status_mutex_`, held for the time of a copy. |
+| The executor of the hardware's node | The status timer, every 100 ms: `publish_status_if_due()`. | Takes `status_mutex_` to copy the status, and the atomic `status_changed_`. |
+| The thread of a controller switch | `perform_command_mode_switch()`. | The atomic `position_claimed`, `velocity_claimed` and `stop_pending` of each joint, see [Switching Controllers](#switching-controllers). The commands it resets to NaN are plain `double`. |
+| The Teensy's timer interrupt, every 5 µs | `run()`: the steps, the states, the goals. | The `volatile` flags `writingMotorGoals` and `readingMotorStates`, see [The Interrupt and the Main Loop](#the-interrupt-and-the-main-loop). |
+| The Teensy's main loop | `loop()`: the serial port, the commands, the watchdog. | The same two flags. |
+
+The drivers take no lock: `DefaultDriver` writes a request and reads its response on the one port, so two calls at once would mix their frames. `StepitHardware` calls its driver from the lifecycle callbacks and from `read()` and `write()`, and leaves it to `ros2_control` to make them one at a time.
+
 ## Safety Nets
 
 | What can go wrong | What stops the motors |
 |---|---|
-| The host goes silent, crashes or is unplugged | The watchdog: no request for 1 s, `TIMEOUT_MS`, and the firmware sets every goal speed to 0, a smooth stop. Every status query of `read()` resets it. |
+| The host goes silent, crashes or is unplugged | The watchdog: no request for 1 s, `TIMEOUT_MS`, and the firmware sets every goal speed to 0, a smooth stop, again on every pass of its main loop until a frame comes. Any frame with a good CRC resets it: the status query of every `read()` does. |
 | A controller is deactivated or switched | `stop_pending`: the next `write()` sends a velocity of 0 to every released joint nothing else commands. |
 | The hardware is deactivated | `on_deactivate()` sends a velocity of 0 to every motor. |
-| A command is malformed or names a missing motor | The firmware stops every motor and answers `0x12`; `write()` returns `ERROR`, and `ros2_control` deactivates the hardware. |
+| A command is malformed or names a missing motor | The firmware stops every motor and answers `0x12`; `write()` returns `ERROR`, and `ros2_control` moves the hardware to `unconfigured`. |
 | The host reconnects to a controller with a goal left | `connect()` pins every motor where it is, and Config holds them too. |
 | A description asks more than the board can do | `on_configure()` checks it against the limits the controller reports, and the firmware refuses it. |
 | A frame is corrupted | The CRC: the firmware drops the frame and does not answer, the host's read times out after 0.2 s and returns `ERROR`; the firmware's watchdog stops the motors 1 s after the last good frame. |
@@ -271,9 +296,9 @@ The tests run without the board: `DefaultDriver` against a mock of `FramedSerial
 | [`test_default_driver`](../src/stepit_driver/tests/test_default_driver.cpp) | 11 | The frames of each command and the decoding of each response; the handshake: the retries, an unknown device, an incompatible firmware, a truncated info response, the limits it reports, and holding the motors. |
 | [`test_fake_driver`](../src/stepit_driver/tests/test_fake_driver.cpp) | 7 | The limits of a configuration, a batch with one bad entry, an unknown motor in a motion command. |
 | [`test_fake_motor`](../src/stepit_driver/tests/test_fake_motor.cpp) | 3 | The position and the velocity of a motor over time, after position and velocity goals. |
-| [`test_stepit_hardware`](../src/stepit_hardware/tests/test_stepit_hardware.cpp) | 33 | Loading a URDF through `ros2_control`'s `ResourceManager`; the checks of `on_init` and `on_configure`; `read()` routing states by id; `write()` and its rejections; `on_deactivate()`; controller switches, releases and a release during `write()`; the status on `/motors/status`. |
+| [`test_stepit_hardware`](../src/stepit_hardware/tests/test_stepit_hardware.cpp) | 36 | Loading a URDF through `ros2_control`'s `ResourceManager`; the checks of `on_init` and `on_configure`; `read()` routing states by id; `write()` and its rejections; the opposite states and commands of an inverted joint; `on_deactivate()`; controller switches, releases and a release during `write()`; the status on `/motors/status`. |
 
-Run them in the container:
+Run them in the container: all of them, with the linters of each package and the check that the diagrams are up to date, or those of one package:
 
 ```bash
 ./bin/test.sh
@@ -282,17 +307,19 @@ colcon test --packages-select stepit_hardware --return-code-on-test-failure
 
 What has no automated test:
 
-- **The firmware.** It is checked by hand on the board, with `get_info` and `get_status` of `stepit_hardware_tests`, or frames sent with Echo; a throwaway test never goes in `stepit_hardware_tests`, which needs the board.
+- **The firmware.** It is checked by hand on the board, with `get_info` and `get_status` of `stepit_hardware_tests`, or frames sent with Echo. Both programs connect as the driver does, so they also pin the motors where they are; a throwaway test never goes in `stepit_hardware_tests`, which needs the board.
 - **The timing**: steps lost at the limits, the 5 µs interrupt, the deceleration on a lower speed. They need the motors.
 - **`robot.launch.py` and the controllers** together with the hardware, which StepIt Macro runs.
+- **The factories**: `DefaultDriverFactory` choosing the driver from `use_dummy`, and `DefaultSerialFactory` reading the port and the timeout.
+- **`FakeDriver` through `StepitHardware`**: the tests of the hardware use a mock of `Driver`, so nothing runs the two together but the launch file.
 
 ## How to Extend the Driver
 
 | To... | Change... |
 |---|---|
 | add a command | its id and handler in `main.cpp`; a request or response class in `stepit_driver/msgs`; a method in `Driver`, `DefaultDriver` and `FakeDriver`; a frame test in `test_default_driver`. Bump `VERSION_MAJOR` and `kExpectedProtocolVersion` only if an existing layout changes. |
-| change the limits of the board | `MAX_ACCELERATION` and `MAX_SPEED` in `main.cpp`, `hardware_limits.hpp`, and the joints of `stepit.ros2_control.xacro`. |
-| drive fewer or more motors | the joints of `stepit.ros2_control.xacro` and `controllers.yaml`; `NUMBER_OF_MOTORS` and the pins in `main.cpp`, and `kMotorCount` in `hardware_limits.hpp`. `on_init` requires the ids to run from 0 to the number of joints minus 1, and `read()` that the controller reports exactly the configured motors, while the firmware reports all of its motors. |
+| change the limits of the board | `MAX_ACCELERATION` and `MAX_SPEED` in `main.cpp`, `hardware_limits.hpp`, and the joints of `stepit.ros2_control.xacro`. Then run `get_info` on the board: it fails when the firmware and `hardware_limits.hpp` differ. |
+| drive fewer or more motors | the joints of `stepit.ros2_control.xacro` and `controllers.yaml`; `NUMBER_OF_MOTORS` and the pins in `main.cpp`, and `kMotorCount` in `hardware_limits.hpp`. `on_init` requires the ids to run from 0 to the number of joints minus 1, and `read()` that the controller reports exactly the configured motors, while the firmware reports all of its motors: a robot must have as many joints as the firmware has motors. |
 | add a hardware parameter | a `<param>` in `stepit.ros2_control.xacro`, a `xacro:arg` and a launch argument in `robot.launch.py`, and its reading in the factory that uses it, with the same name. |
 | add another kind of controller board | a class implementing `Driver`, and a factory that creates it: `StepitHardware` does not change. |
 | build for another Teensy | an `[env:<board>]` in `platformio.ini`, beside `teensy40` and `teensy41`, and the pins in `main.cpp` if the board lacks pins 0 to 15. The 5 µs interrupt needs a processor as fast as the Teensy 4's, 600 MHz. |
@@ -305,7 +332,7 @@ What has no automated test:
 
 **The firmware plans each motion, the host only sends targets.** AccelStepper accelerates and brakes every motor at its configured acceleration, so a position goal sent every cycle becomes a smooth move without the host computing a profile, and a goal that is never followed by another, after a crash, still ends at rest. The price is that the motors are not synchronised: each reaches its target on its own, and the trajectory controller's timing is only as good as their acceleration allows.
 
-**Two trajectory controllers.** On the `position` interfaces, `joint_trajectory_controller` sends a new target every cycle, and the motor runs at full speed toward it and plans to stop there: it chases the trajectory, which suits a move to a point but strays from a path. `velocity_trajectory_controller` sends the velocity of the trajectory plus a correction for the error instead, and the motor turns at that velocity until the next cycle. On a 7 s ellipse on the rig, the first trailed by up to 1,156 steps, the second by 3, as the simulation of the firmware predicted. The price is a faster loop, 100 Hz instead of 30 Hz, so twice as many round trips over the serial port per second, and a joint that hunts by one step at rest, since the correction never reaches zero: it is deactivated when the trajectory is done.
+**Two trajectory controllers.** On the `position` interfaces, `joint_trajectory_controller` sends a new target every cycle, and the motor runs at full speed toward it and plans to stop there: it chases the trajectory, which suits a move to a point but strays from a path. `velocity_trajectory_controller` sends the velocity of the trajectory plus a correction for the error instead, and the motor turns at that velocity until the next cycle. On a 7 s ellipse on the rig, the first, at 30 Hz, trailed by up to 1,156 steps, the second, at 100 Hz, by 3, as the simulation of the firmware predicted. The price is a faster loop for every controller, since the rate is the controller manager's: 100 Hz, where 30 Hz was enough for positions, so more than three times as many round trips over the serial port per second, and a joint that hunts by one step at rest, since the correction never reaches zero: it is deactivated when the trajectory is done.
 
 **Velocity as an infinite target.** AccelStepper moves to positions; a velocity is a target far away at the requested speed, and a speed of 0 holds the motor where it is, rather than an infinite target at speed 0, which runs away as soon as something raises the speed, e.g. a configuration.
 
@@ -315,7 +342,7 @@ What has no automated test:
 
 **A release stops the motor; a new claim starts from nothing.** The firmware keeps executing its last goal, so a controller that lets go would otherwise leave a motor turning, and a controller that starts would otherwise resend a stale command. Both are decided in `perform_command_mode_switch()`, the only place that knows which interfaces a controller owns.
 
-**The status is recorded in the loop and published outside it.** `read()` and `write()` know first when the controller is lost, but publishing from the realtime loop would allocate and could block it. They record the change; a timer on the hardware's node publishes it within 100 ms, and again every second, so that a page can tell a dead node from a quiet one.
+**The status is recorded in the loop and published outside it.** `read()` and `write()` know first when the controller is lost, but publishing from the realtime loop would allocate and could block it. They record the change, under a mutex held for the time of a copy; a timer on the hardware's node publishes it within 100 ms, and again every second, so that a page can tell a dead node from a quiet one.
 
 **One firmware for the Teensy 4.0 and 4.1.** The two boards have the same processor, and the pins 0 to 15 at the same places, so one code and one wiring serve both, and a rig takes the smaller and cheaper 4.0 or the 4.1 it already has. The price is a build per board in `platformio.ini`: each is linked for the memory of its board, so we flash the build of the board we have.
 
