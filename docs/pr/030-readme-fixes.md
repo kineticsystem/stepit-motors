@@ -1,6 +1,6 @@
 # The README Files, Checked Against the Code
 
-Branch `readme-fixes`.
+Pull request [#30](https://github.com/kineticsystem/stepit-motors/pull/30), branch `readme-fixes`.
 
 ## Goal
 
